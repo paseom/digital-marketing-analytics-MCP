@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "marketing-analytics": {
+      "command": "python",
+      "args": [
+        "-m",
+        "marketing_analytics.server"
+      ]
+    }
+  }
+}

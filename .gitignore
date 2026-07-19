@@ -1,0 +1,17 @@
+# Google Ads credentials
+google-ads.yaml
+client_secret.json
+generate_refresh_token.py
+.env
+.env.*
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
