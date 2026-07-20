@@ -20,7 +20,7 @@ class GoogleAdsConnector(BaseMarketingConnector):
     """Real connector for Google Ads using the official Google Ads Python SDK."""
 
     def __init__(self):
-        self.client = GoogleAdsClient.load_from_storage("google-ads.yaml")
+        self.client = self._build_client()
         self.service = self.client.get_service("GoogleAdsService")
         customer_id = os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
         if not customer_id:
@@ -33,6 +33,29 @@ class GoogleAdsConnector(BaseMarketingConnector):
         # Reported in get_api_schema(); override if it doesn't match your installed SDK version.
         self.api_version = os.environ.get("GOOGLE_ADS_API_VERSION", "v24")
         
+    @staticmethod
+    def _build_client() -> GoogleAdsClient:
+        """
+        Local dev: reads google-ads.yaml from disk (via load_from_storage).
+        Cloud Run / production: google-ads.yaml is gitignored and won't exist in the
+        container, so credentials are read from env vars instead (via load_from_dict).
+        Switches automatically based on whether GOOGLE_ADS_DEVELOPER_TOKEN is set.
+        """
+        if os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN"):
+            config = {
+                "developer_token": os.environ["GOOGLE_ADS_DEVELOPER_TOKEN"],
+                "client_id": os.environ["GOOGLE_ADS_CLIENT_ID"],
+                "client_secret": os.environ["GOOGLE_ADS_CLIENT_SECRET"],
+                "refresh_token": os.environ["GOOGLE_ADS_REFRESH_TOKEN"],
+                "use_proto_plus": True,
+            }
+            login_customer_id = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+            if login_customer_id:
+                config["login_customer_id"] = login_customer_id.replace("-", "")
+            return GoogleAdsClient.load_from_dict(config)
+ 
+        return GoogleAdsClient.load_from_storage("google-ads.yaml")
+    
     # ---------------------------------------------------------------
     # Internal helper
     # ---------------------------------------------------------------
