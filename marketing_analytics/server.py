@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Optional, List
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from marketing_analytics.connectors import registry
 from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, MarketingReport
