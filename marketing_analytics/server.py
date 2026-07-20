@@ -17,6 +17,11 @@ mcp = FastMCP(
     stateless_http=True,
     json_response=True,
     streamable_http_path="/",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=["*.vercel.app", "localhost:*", "127.0.0.1:*"],
+        allowed_origins=["https://*.vercel.app", "http://localhost:*", "http://127.0.0.1:*"],
+    ),
 )
 
 # ==========================================
