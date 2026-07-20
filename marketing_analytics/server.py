@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from typing import Optional, List
@@ -12,6 +13,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("marketing_analytics_mcp")
 
 # Initialize FastMCP Server
+_allowed_hosts = ["localhost:*", "127.0.0.1:*", "digital-marketing-analytics-mcp.vercel.app"]
+_allowed_origins = ["http://localhost:*", "http://127.0.0.1:*", "https://digital-marketing-analytics-mcp.vercel.app"]
+_vercel_url = os.environ.get("VERCEL_URL")
+if _vercel_url:
+    _allowed_hosts.append(_vercel_url)
+    _allowed_origins.append(f"https://{_vercel_url}")
+ 
 mcp = FastMCP(
     "Marketing Analytics Server",
     instructions="Unified API connector and reporting server for major Ad/Analytics platforms (Google Ads, Meta Ads, TikTok Ads, GA4).",
@@ -20,8 +28,8 @@ mcp = FastMCP(
     streamable_http_path="/",
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=["*.vercel.app", "localhost:*", "127.0.0.1:*"],
-        allowed_origins=["https://*.vercel.app", "http://localhost:*", "http://127.0.0.1:*"],
+        allowed_hosts=_allowed_hosts,
+        allowed_origins=_allowed_origins,
     ),
 )
 
