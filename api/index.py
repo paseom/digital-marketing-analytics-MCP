@@ -24,4 +24,4 @@ from marketing_analytics.server import mcp
 
 # streamable_http_app() returns a standard ASGI app — Vercel's Python
 # runtime knows how to serve this directly.
-app = mcp.streamable_http_app(path="/")
+app = mcp.streamable_http_app()

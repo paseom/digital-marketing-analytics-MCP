@@ -16,6 +16,7 @@ mcp = FastMCP(
     instructions="Unified API connector and reporting server for major Ad/Analytics platforms (Google Ads, Meta Ads, TikTok Ads, GA4).",
     stateless_http=True,
     json_response=True,
+    streamable_http_path="/",
 )
 
 # ==========================================
