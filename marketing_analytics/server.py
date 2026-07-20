@@ -13,7 +13,9 @@ logger = logging.getLogger("marketing_analytics_mcp")
 # Initialize FastMCP Server
 mcp = FastMCP(
     "Marketing Analytics Server",
-    instructions="Unified API connector and reporting server for major Ad/Analytics platforms (Google Ads, Meta Ads, TikTok Ads, GA4)."
+    instructions="Unified API connector and reporting server for major Ad/Analytics platforms (Google Ads, Meta Ads, TikTok Ads, GA4).",
+    stateless_http=True,
+    json_response=True,
 )
 
 # ==========================================
