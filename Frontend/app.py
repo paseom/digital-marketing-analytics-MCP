@@ -12,6 +12,7 @@ Flow:
 """
 
 import asyncio
+import concurrent.futures
 import json
 import os
 
@@ -107,6 +108,16 @@ async def ask_gemini(question: str, history: list):
             return answer_text, table
 
 
+def run_ask_gemini_isolated(question: str, history: list):
+    """Run ask_gemini() in a separate thread with its own fresh event loop.
+    This avoids conflicts with Streamlit's own event loop/threading model,
+    which is what causes the 'cannot pickle _asyncio.Future' error when
+    calling asyncio.run() directly inside a Streamlit script on cloud hosts."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(asyncio.run, ask_gemini(question, history))
+        return future.result()
+
+
 # --- Render existing chat history ---
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -134,7 +145,7 @@ if question:
     with st.chat_message("assistant"):
         with st.spinner("Mengambil data..."):
             try:
-                answer_text, table = asyncio.run(ask_gemini(question, history))
+                answer_text, table = run_ask_gemini_isolated(question, history)
             except* Exception as eg:
                 # Recursively unwrap nested ExceptionGroups (streamablehttp_client
                 # and ClientSession each run their own TaskGroup) to see the
