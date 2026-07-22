@@ -37,7 +37,7 @@ MAX_TOOL_ROUNDS = 5  # safety cap on how many tool calls Gemini can chain in one
 
 st.set_page_config(page_title="Marketing Analytics Chat", page_icon="📊", layout="centered")
 st.title("📊 Marketing Analytics Chat")
-st.caption("Tanya soal performa campaign — data langsung dari Google Ads.")
+st.caption("Tanya soal performa campaign — data langsung dari Dashboard.")
 
 if not GEMINI_API_KEY or not MCP_SERVER_URL:
     st.error("GEMINI_API_KEY atau MCP_SERVER_URL belum diset di Secrets. Cek Settings > Secrets.")
