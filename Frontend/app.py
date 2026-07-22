@@ -39,6 +39,16 @@ if "messages" not in st.session_state:
     st.session_state.messages = []  # each item: {"role": ..., "text": ..., "table": df_or_None}
 
 
+def flatten_exceptions(exc) -> list[str]:
+    """Recursively unwrap nested ExceptionGroups to find the real root-cause errors."""
+    if isinstance(exc, BaseExceptionGroup):
+        result = []
+        for sub in exc.exceptions:
+            result.extend(flatten_exceptions(sub))
+        return result
+    return [f"{type(exc).__name__}: {exc}"]
+
+
 def try_extract_table(tool_response_text: str) -> pd.DataFrame | None:
     """Try to turn a tool's JSON response into a clean DataFrame for display.
     Returns None if it doesn't look tabular — caller just shows text then."""
@@ -126,10 +136,10 @@ if question:
             try:
                 answer_text, table = asyncio.run(ask_gemini(question, history))
             except* Exception as eg:
-                # asyncio TaskGroups wrap real errors inside an ExceptionGroup —
-                # unwrap it so we can see what actually went wrong. except* also
-                # catches plain (non-grouped) exceptions the same way.
-                sub_errors = "; ".join(f"{type(e).__name__}: {e}" for e in eg.exceptions)
+                # Recursively unwrap nested ExceptionGroups (streamablehttp_client
+                # and ClientSession each run their own TaskGroup) to see the
+                # actual root-cause error instead of the generic wrapper message.
+                sub_errors = "; ".join(flatten_exceptions(eg))
                 answer_text, table = f"Terjadi error: {sub_errors}", None
 
         st.markdown(answer_text)
