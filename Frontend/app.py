@@ -125,8 +125,13 @@ if question:
         with st.spinner("Mengambil data..."):
             try:
                 answer_text, table = asyncio.run(ask_gemini(question, history))
+            except* Exception as eg:
+                # asyncio TaskGroups wrap real errors inside an ExceptionGroup —
+                # unwrap it so we can see what actually went wrong.
+                sub_errors = "; ".join(f"{type(e).__name__}: {e}" for e in eg.exceptions)
+                answer_text, table = f"Terjadi error: {sub_errors}", None
             except Exception as e:
-                answer_text, table = f"Terjadi error: {e}", None
+                answer_text, table = f"Terjadi error: {type(e).__name__}: {e}", None
 
         st.markdown(answer_text)
         if table is not None:
