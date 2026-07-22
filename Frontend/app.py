@@ -32,7 +32,7 @@ from mcp.client.streamable_http import streamablehttp_client
 
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
 MCP_SERVER_URL = st.secrets.get("MCP_SERVER_URL", os.environ.get("MCP_SERVER_URL"))
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-flash-latest"  # auto-tracks the current GA Flash model (currently gemini-3.6-flash)
 MAX_TOOL_ROUNDS = 5  # safety cap on how many tool calls Gemini can chain in one turn
 
 st.set_page_config(page_title="Marketing Analytics Chat", page_icon="📊", layout="centered")
