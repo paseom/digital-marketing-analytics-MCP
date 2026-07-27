@@ -36,6 +36,22 @@ GEMINI_MODEL = "gemini-flash-latest"  # auto-tracks the current GA Flash model (
 MAX_TOOL_ROUNDS = 5  # safety cap on how many tool calls Gemini can chain in one turn
 
 st.set_page_config(page_title="Marketing Analytics Chat", page_icon="📊", layout="centered")
+
+ALLOWED_EMAIL_DOMAIN = "i-dacasia.com"  
+if not st.user.is_logged_in:
+    st.title("📊 Marketing Analytics Chat")
+    st.write("Silakan login untuk mengakses chat ini.")
+    if st.button("Log in dengan Google"):
+        st.login("google")
+    st.stop()
+ 
+user_email = st.user.email or ""
+if not user_email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
+    st.error(f"Email Tidak Valid. Silakan login dengan email @{ALLOWED_EMAIL_DOMAIN}.")
+    if st.button("Log out"):
+        st.logout()
+    st.stop()
+    
 st.title("📊 Marketing Analytics Chat")
 st.caption("Tanya soal performa campaign — data langsung dari Dashboard.")
 
@@ -45,6 +61,10 @@ if not GEMINI_API_KEY or not MCP_SERVER_URL:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []  # {"role", "text", "table": df_or_None}
+if "question_count" not in st.session_state:
+    st.session_state.question_count = 0
+ 
+MAX_QUESTIONS_PER_SESSION = 30
 
 
 # ---------------------------------------------------------------
@@ -187,6 +207,9 @@ for msg in st.session_state.messages:
 # --- Chat input ---
 question = st.chat_input("Contoh: gimana performa campaign bulan ini?")
 if question:
+    if st.session_state.question_count >= MAX_QUESTIONS_PER_SESSION:
+        st.error(f"Maaf, Anda telah mencapai batas maksimum {MAX_QUESTIONS_PER_SESSION} pertanyaan per sesi.")
+        st.stop()
     st.session_state.messages.append({"role": "user", "text": question, "table": None})
     with st.chat_message("user"):
         st.markdown(question)
