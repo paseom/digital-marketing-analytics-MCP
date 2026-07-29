@@ -1,130 +1,152 @@
 # Marketing Analytics MCP Server
 
-A modular, reusable **Model Context Protocol (MCP)** server built in Python using FastMCP. 
+A **Model Context Protocol (MCP)** server built in Python using FastMCP, connecting AI agents to real advertising platform data — currently live with **Google Ads**, with a modular connector architecture ready for Meta Ads, TikTok Ads, and GA4.
 
-The server provides a unified, clean interface to interact with major advertising and analytics platforms:
-- **Google Ads**
-- **Meta Ads (Facebook)**
-- **TikTok Ads**
-- **Google Analytics 4 (GA4)**
+**🔗 Live chat interface:** [digital-marketing-mcp.streamlit.app](https://digital-marketing-mcp.streamlit.app) (login required, restricted to internal email domain)
+**🔗 MCP server endpoint:** `https://digital-marketing-analytics-mcp.vercel.app/`
 
-It uses a decoupled **Connector Architecture** with a centralized **Registry**, allowing you to implement platform-specific APIs and authentication profiles later under dedicated modules without modifying the core server logic.
+📘 **Untuk arsitektur lengkap, deployment guide, dan troubleshooting, lihat [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md).**
 
 ---
 
-## Architecture Overview
+## Status Connector
+
+| Platform | Status |
+|---|---|
+| Google Ads | ✅ Real |
+| Meta Ads | ⚠️ Placeholder (dummy) |
+| TikTok Ads | ⚠️ Placeholder (dummy) |
+| GA4 | ⚠️ Placeholder (dummy) |
+
+---
+
+## Arsitektur
 
 ```
-D:\My Folder\Magang\I-dac\MCP (Python)\
-├── marketing_analytics/
-│   ├── __init__.py
-│   ├── server.py             # Entrypoint and FastMCP server registration
-│   ├── models.py             # Pydantic schema models for strict type safety
-│   ├── connectors/
-│   │   ├── __init__.py       # Auto-registers active platform connectors
-│   │   ├── base.py           # Abstract BaseMarketingConnector interface
-│   │   ├── registry.py       # Central orchestrator for multi-platform actions
-│   │   ├── google_ads.py     # Google Ads API Connector
-│   │   ├── meta_ads.py       # Meta Ads API Connector
-│   │   ├── tiktok_ads.py     # TikTok Ads API Connector
-│   │   └── ga4.py            # Google Analytics 4 API Connector
-│   └── data/                 # Platform configuration & metadata schemas
-├── tests/
-│   ├── test_server.py        # Unit tests for tools, resources, and prompts
-│   └── test_connectors.py    # Unit tests for connector/registry logic
-├── pyproject.toml            # Package definition and dependencies
-└── README.md                 # This documentation
+Streamlit Chat (frontend)  ──▶  MCP Server (Vercel, FastMCP)  ──▶  Google Ads API
+        │
+        ▼
+   Gemini API (tool-calling)
 ```
+
+- **MCP server** (`marketing_analytics/`) di-deploy ke **Vercel** sebagai Streamable HTTP endpoint (serverless)
+- **Chat frontend** (`Frontend/`) di-deploy ke **Streamlit Community Cloud**, connect ke MCP server + Gemini API
+- Dua komponen ini independen, hosting terpisah, connect lewat URL publik
+
+Detail penuh (kenapa pilihan arsitektur ini, gotcha teknis pas deploy, dll) ada di [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md).
 
 ### Connector Interface (`base.py`)
-Every platform connector inherits from `BaseMarketingConnector` and implements the following methods:
-*   `fetch_account_info() -> AccountInfo`
-*   `fetch_campaigns() -> List[Campaign]`
-*   `fetch_metrics(campaign_id: str) -> CampaignMetrics`
-*   `generate_report_data(start_date: str, end_date: str) -> PlatformReport`
-*   `get_api_schema() -> Dict[str, Any]`
-*   `get_sample_data() -> Dict[str, Any]`
+
+Setiap connector platform wajib implementasi:
+
+- `fetch_account_info() -> AccountInfo`
+- `fetch_campaigns() -> List[Campaign]`
+- `fetch_metrics(campaign_id: str) -> CampaignMetrics`
+- `generate_report_data(start_date: str, end_date: str) -> PlatformReport`
+- `get_api_schema() -> Dict[str, Any]`
+- `get_sample_data() -> Dict[str, Any]`
+
+---
+
+## Struktur Repo
+
+```
+├── marketing_analytics/
+│   ├── server.py             
+│   ├── models.py            
+│   └── connectors/
+│       ├── __init__.py         
+│       ├── base.py               
+│       ├── registry.py           
+│       ├── google_ads.py          
+│       ├── meta_ads.py              # ⚠️ Dummy
+│       ├── tiktok_ads.py             # ⚠️ Dummy
+│       └── ga4.py                     # ⚠️ Dummy
+├── api/
+│   └── index.py             
+├── Frontend/
+│   └── app.py                
+├── tests/
+├── vercel.json
+└── pyproject.toml               
+```
 
 ---
 
 ## Exposed MCP Primitives
 
 ### 🛠️ Tools
-*   `fetch_account_info(platform: Optional[str])`: Returns advertiser account details (account ID, name, currency, status, etc.).
-*   `fetch_campaigns(platform: Optional[str])`: Retrieves campaigns (names, budgets, statuses, dates) across one or all platforms.
-*   `fetch_campaign_metrics(campaign_id: str, platform: str)`: Fetches performance metrics (impressions, clicks, spend, conversions, CPC, CTR, ROAS) for a specific campaign.
-*   `generate_report(platforms: Optional[List[str]], start_date: str, end_date: str)`: Generates an aggregated marketing dashboard across platforms.
+
+- `fetch_account_info(platform: Optional[str])` — detail akun iklan (nama, currency, status), semua akun kalau `platform` tidak diisi
+- `fetch_campaigns(platform: Optional[str])` — daftar campaign (nama, budget, status, tanggal)
+- `fetch_campaign_metrics(campaign_id: str, platform: str)` — metrics performa (impressions, clicks, spend, conversions, CPC, CTR, ROAS)
+- `generate_report(platforms: Optional[List[str]], start_date: str, end_date: str)` — laporan agregat lintas platform/akun
 
 ### 📄 Resources
-*   `marketing://config`: Reads overall integrated accounts configuration and platform connection status.
-*   `marketing://schemas/{platform}`: Reads the formal API endpoint, schema definition, and authentication requirements for a specific platform.
-*   `marketing://sample-data/{platform}`: Reads mock raw payload responses from direct platform APIs for debugging and LLM context.
+
+- `marketing://config` — status koneksi & daftar akun terintegrasi
+- `marketing://schemas/{platform}` — skema API & auth requirement per platform
+- `marketing://sample-data/{platform}` — contoh raw payload buat debugging
 
 ### 💬 Prompts
-*   `summarize_campaign_performance(platform, campaign_name)`: AI prompt template tailored for summarizing campaign performance.
-*   `analyze_marketing_metrics(metrics_json)`: AI prompt template for in-depth CPC, CTR, and ROAS analysis.
-*   `recommend_campaign_optimization(performance_summary)`: AI prompt template for PPC strategic recommendations (bidding, creatives, targeting).
+
+- `summarize_campaign_performance(platform, campaign_name)`
+- `analyze_marketing_metrics(metrics_json)`
+- `recommend_campaign_optimization(performance_summary)`
 
 ---
 
-## Installation & Setup
+## Setup Lokal
 
-### Prerequisites
-*   Python 3.11+
-*   Node.js (for testing via the MCP Inspector)
+### Prasyarat
 
-### 1. Initialize Virtual Environment & Install Dependencies
+- Python 3.11+
+- Node.js (buat MCP Inspector)
+
+### 1. Install dependency
+
 ```bash
-# Create virtual environment
 python -m venv .venv
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate     # macOS/Linux
 
-# Activate virtual environment
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-
-# Install package in development mode along with development dependencies
 pip install -e ".[dev]"
 ```
 
-### 2. Running Unit Tests
-Validate that everything compiles and calculations match expectations:
+### 2. Isi credential
+
+Copy `google-ads.yaml.example` → `google-ads.yaml`, isi credential Google Ads asli. **Jangan commit file ini** (sudah di-`.gitignore`).
+
+### 3. Jalankan test
+
 ```bash
 python -m pytest
 ```
 
----
-
-## Running and Debugging
-
-### Using MCP Inspector
-You can inspect the registered tools, resources, and prompts using the official Model Context Protocol Inspector:
+### 4. Debug pakai MCP Inspector
 
 ```bash
 npx @modelcontextprotocol/inspector .venv/Scripts/python marketing_analytics/server.py
 ```
 
-### Configuring Claude Desktop
-To add this server to your Claude Desktop application, open your Claude config file:
-*   **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-*   **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+Untuk test versi yang sudah di-deploy (Vercel), pakai transport **Streamable HTTP** di Inspector, URL: `https://digital-marketing-analytics-mcp.vercel.app/`.
 
-Add the following configuration (replace the directory with your actual folder path):
+### 5. Jalankan chat frontend lokal
 
-```json
-{
-  "mcpServers": {
-    "marketing-analytics": {
-      "command": "D:\\My Folder\\Magang\\I-dac\\MCP (Python)\\.venv\\Scripts\\python.exe",
-      "args": [
-        "D:\\My Folder\\Magang\\I-dac\\MCP (Python)\\marketing_analytics\\server.py"
-      ]
-    }
-  }
-}
+```bash
+cd Frontend
+pip install -r requirements.txt
+streamlit run app.py
 ```
 
-Restart Claude Desktop, and you will see the new tools, resources, and prompts available!
-"# MCP" 
-"# digital-marketing-analytics-MCP" 
+Butuh `Frontend/.streamlit/secrets.toml` terisi (lihat [DEVELOPER_GUIDE.md §3](./DEVELOPER_GUIDE.md#3-environment-variables--referensi-lengkap)).
+
+---
+
+## Deployment
+
+Panduan lengkap + daftar error yang pernah kejadian dan cara benerinnya ada di **[DEVELOPER_GUIDE.md §8](./DEVELOPER_GUIDE.md#8-deploy--panduan--gotcha-yang-pernah-kejadian)**.
+
+Ringkas:
+- **Backend** → Vercel, Streamable HTTP transport, env var di dashboard Vercel
+- **Frontend** → Streamlit Community Cloud, secrets di dashboard Streamlit, auth via Google OAuth (domain-restricted)

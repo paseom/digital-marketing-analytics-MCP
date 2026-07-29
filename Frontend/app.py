@@ -84,6 +84,17 @@ ATURAN FORMAT JAWABAN (WAJIB diikuti konsisten setiap saat):
    Tapi kalau tidak ada data untuk grafik tersebut atau data tidak bisa divisualisasikan, tolak dengan sopan dan jelaskan bahwa kamu tidak bisa menampilkan grafik tersebut.
 10. Kalau user minta "list campaign" atau "daftar campaign", tampilkan tabel yang berisi kolom: "Campaign ID", "Nama Campaign", "Platform", "Status", "Budget", "Impressions" dan pisah sesuai platform. Jangan menampilkan kolom lain, dan jangan menampilkan data mentah JSON.
 11. Kalau user minta "performance metrics" atau "metrik performa", tampilkan tabel yang berisi kolom: "Campaign ID", "Nama Campaign", "Platform", "Impressions", "Clicks", "CTR", "Conversions", "Cost" dan pisah sesuai platform. Jangan menampilkan kolom lain, dan jangan menampilkan data mentah JSON.
+12. Bisa jadi ada LEBIH DARI SATU akun Google Ads yang terhubung, masing-masing
+   punya "platform key" teknis (misal "google_ads_hiid") yang beda dari nama
+   akun aslinya (misal "HIID Marketing"). Kalau user menyebut nama akun,
+   nama campaign, atau tidak menyebut akun sama sekali:
+   - Panggil fetch_account_info() dulu untuk melihat semua akun yang tersedia
+     beserta nama aslinya dan platform key masing-masing.
+   - Kalau user menyebut nama campaign tapi bukan ID, panggil fetch_campaigns()
+     dulu untuk mencocokkan nama ke campaign_id yang benar sebelum memanggil
+     fetch_campaign_metrics().
+   - Kalau user tidak menyebut akun sama sekali dan ada lebih dari satu akun
+     terdaftar, tanya dulu akun mana yang dimaksud, jangan menebak.
 """
 
 st.set_page_config(page_title="Marketing Analytics Chat", page_icon="📊", layout="centered")

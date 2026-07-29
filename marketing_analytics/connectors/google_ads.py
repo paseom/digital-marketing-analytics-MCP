@@ -19,17 +19,18 @@ logger = logging.getLogger("marketing_analytics_mcp.google_ads")
 class GoogleAdsConnector(BaseMarketingConnector):
     """Real connector for Google Ads using the official Google Ads Python SDK."""
 
-    def __init__(self):
+    def __init__(self, customer_id: str = None, account_label: str = None):
         self.client = self._build_client()
         self.service = self.client.get_service("GoogleAdsService")
-        customer_id = os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
+        customer_id = customer_id or os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
         if not customer_id:
             raise ValueError(
-                "GOOGLE_ADS_CUSTOMER_ID is not set. Export it before starting the server, "
+                "No customer_id provided and GOOGLE_ADS_CUSTOMER_ID is not set."
                 "e.g. export GOOGLE_ADS_CUSTOMER_ID=1234567890"
             )
-        self.customer_id = customer_id.replace("-", "")
-        
+        self.customer_id = customer_id.strip().replace("-", "")
+        self._platform_name = f"google_ads_{account_label}" if account_label else "google_ads"
+
         # Reported in get_api_schema(); override if it doesn't match your installed SDK version.
         self.api_version = os.environ.get("GOOGLE_ADS_API_VERSION", "v24")
         
