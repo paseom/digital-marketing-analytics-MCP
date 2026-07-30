@@ -5,7 +5,7 @@ Dokumentasi ini buat siapapun yang lanjutin/maintain project ini setelah aku. Is
 ---
 
 **Alur satu pertanyaan user:**
-1. User ngetik pertanyaan di chat Streamlit
+1. User mengetik pertanyaan di chat Streamlit
 2. Streamlit app connect ke MCP server (URL Vercel) lewat MCP Client Session, ambil daftar tool yang tersedia (`fetch_campaigns`, `fetch_campaign_metrics`, `fetch_account_info`, `generate_report`)
 3. Tool declarations + pertanyaan user dikirim ke Gemini API
 4. Kalau Gemini minta manggil tool, **kode Streamlit yang eksekusi manual** (`session.call_tool(...)`) ke MCP server → MCP server manggil Google Ads API asli → hasil JSON balik
