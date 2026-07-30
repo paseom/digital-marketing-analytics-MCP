@@ -75,21 +75,20 @@ client_id = "..."
 client_secret = "..."
 server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 
-<!-- # Optional toggle buat testing (default true kalau gak diisi)
+# Optional toggle buat testing (default true kalau gak diisi)
 REQUIRE_AUTH = "true"
 REQUIRE_SYSTEM_INSTRUCTION = "true"
----
-
-<!-- ## Cara Nambah Akun Google Ads (Multi-Account)
+--- 
+## Cara Nambah Akun Google Ads (Multi-Account)
 
 Constructor `GoogleAdsConnector` nerima `customer_id` dan `account_label` opsional:
 
 ```python
 GoogleAdsConnector(customer_id="123456", account_label="hiid")
 # -> get_platform_name() balikin "google_ads_hiid"
-``` -->
+``` 
 
-Registrasinya di `connectors/__init__.py`, baca dari env var `GOOGLE_ADS_ACCOUNTS` (JSON):
+Registrasinya di `connectors/__init__.py`, baca dari env var `GOOGLE_ADS_ACCOUNTS` (JSON): 
 
 ```python
 accounts_json = os.environ.get("GOOGLE_ADS_ACCOUNTS")
