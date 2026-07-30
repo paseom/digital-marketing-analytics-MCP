@@ -78,7 +78,7 @@ server_metadata_url = "https://accounts.google.com/.well-known/openid-configurat
 # Optional toggle buat testing (default true kalau gak diisi)
 REQUIRE_AUTH = "true"
 REQUIRE_SYSTEM_INSTRUCTION = "true"
---- 
+
 ## Cara Nambah Akun Google Ads (Multi-Account)
 
 Constructor `GoogleAdsConnector` nerima `customer_id` dan `account_label` opsional:
