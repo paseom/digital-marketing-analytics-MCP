@@ -77,7 +77,7 @@ class GoogleAdsConnector(BaseMarketingConnector):
             raise
 
     def get_platform_name(self) -> str:
-        return "google_ads"
+        return self._platform_name
     
     # ---------------------------------------------------------------
     # Account info
