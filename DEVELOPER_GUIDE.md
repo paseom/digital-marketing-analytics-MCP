@@ -57,11 +57,8 @@ digital-marketing-analytics-MCP/
 | `GOOGLE_ADS_CLIENT_SECRET` | dari `google-ads.yaml` | |
 | `GOOGLE_ADS_REFRESH_TOKEN` | dari `google-ads.yaml` | |
 | `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | ID akun MCC | |
-| `GOOGLE_ADS_CUSTOMER_ID` | ID akun anak (single-account mode) | Dipakai kalau `GOOGLE_ADS_ACCOUNTS` kosong |
 | `GOOGLE_ADS_ACCOUNTS` | JSON, misal `{"brandx":"123","brandy":"456"}` | Multi-account mode, lihat §5 |
 | `GOOGLE_ADS_API_VERSION` | `v24` | Sesuaikan versi SDK `google-ads` yang di-install |
-
-**Awas:** jangan ada spasi di value manapun (khususnya `GOOGLE_ADS_CUSTOMER_ID`)
 
 ### Frontend (Streamlit Cloud — Settings → Secrets, format TOML)
 
@@ -78,7 +75,7 @@ client_id = "..."
 client_secret = "..."
 server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 
-# Optional toggle buat testing (default true kalau gak diisi)
+<!-- # Optional toggle buat testing (default true kalau gak diisi)
 REQUIRE_AUTH = "true"
 REQUIRE_SYSTEM_INSTRUCTION = "true"
 ---
@@ -90,7 +87,7 @@ Constructor `GoogleAdsConnector` nerima `customer_id` dan `account_label` opsion
 ```python
 GoogleAdsConnector(customer_id="123456", account_label="hiid")
 # -> get_platform_name() balikin "google_ads_hiid"
-```
+``` -->
 
 Registrasinya di `connectors/__init__.py`, baca dari env var `GOOGLE_ADS_ACCOUNTS` (JSON):
 
@@ -171,7 +168,7 @@ Credential Google Ads (`developer_token`, `client_secret`, `refresh_token`) **ti
 ## Panduan Deploy
 ### Backend (Vercel)
 
-1. Push ke GitHub (pastikan `.gitignore` udah nyakup `secrets.toml`, `google-ads.yaml`, `.env`)
+1. Push ke GitHub (pastikan `.gitignore` sudah mencakup `secrets.toml`, `google-ads.yaml`, `.env`)
 2. Import project di Vercel, isi semua env var (§3)
 3. Deploy
 <!-- 
