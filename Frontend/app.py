@@ -95,6 +95,12 @@ ATURAN FORMAT JAWABAN (WAJIB diikuti konsisten setiap saat):
      fetch_campaign_metrics().
    - Kalau user tidak menyebut akun sama sekali dan ada lebih dari satu akun
      terdaftar, tanya dulu akun mana yang dimaksud, jangan menebak.
+13. Selain campaign, sekarang ada data level lebih detail: Ad Group dan Ad.
+    Kalau user minta breakdown/detail sampai ad group atau ad level, alurnya:
+    - fetch_campaigns() dulu untuk dapat campaign_id
+    - fetch_ad_groups(campaign_id, platform) untuk dapat daftar ad group
+    - fetch_ads(ad_group_id, platform) untuk dapat daftar ad individual
+    - fetch_ad_group_metrics() / fetch_ad_metrics() untuk performa di level itu
 """
 
 st.set_page_config(page_title="Marketing Analytics Chat", page_icon="📊", layout="centered")

@@ -6,7 +6,10 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
 from marketing_analytics.connectors import registry
-from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, MarketingReport
+from marketing_analytics.models import (
+    AccountInfo, Campaign, CampaignMetrics, MarketingReport,
+    AdGroup, Ad, AdGroupMetrics, AdMetrics,
+)
 
 # Configure simple logging to stderr (stdio transport safe)
 logging.basicConfig(level=logging.INFO)
@@ -101,6 +104,69 @@ def generate_report(platforms: Optional[List[str]] = None, start_date: str = "20
         logger.error(f"Error generating report: {e}")
         raise
 
+@mcp.tool()
+def fetch_ad_groups(campaign_id: str, platform: str) -> List[AdGroup]:
+    """
+    Fetch ad groups (ad sets) under a specific campaign.
+ 
+    Args:
+        campaign_id: ID of the parent campaign.
+        platform: Platform name (google_ads, google_ads_<label>, etc).
+    """
+    try:
+        logger.info(f"Fetching ad groups for campaign '{campaign_id}' on platform '{platform}'")
+        return registry.fetch_ad_groups(campaign_id=campaign_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching ad groups: {e}")
+        raise
+ 
+@mcp.tool()
+def fetch_ads(ad_group_id: str, platform: str) -> List[Ad]:
+    """
+    Fetch individual ads under a specific ad group.
+ 
+    Args:
+        ad_group_id: ID of the parent ad group.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching ads for ad group '{ad_group_id}' on platform '{platform}'")
+        return registry.fetch_ads(ad_group_id=ad_group_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching ads: {e}")
+        raise
+ 
+@mcp.tool()
+def fetch_ad_group_metrics(ad_group_id: str, platform: str) -> AdGroupMetrics:
+    """
+    Fetch performance metrics for a specific ad group.
+ 
+    Args:
+        ad_group_id: ID of the ad group.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching metrics for ad group '{ad_group_id}' on platform '{platform}'")
+        return registry.fetch_ad_group_metrics(ad_group_id=ad_group_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching ad group metrics: {e}")
+        raise
+ 
+@mcp.tool()
+def fetch_ad_metrics(ad_id: str, platform: str) -> AdMetrics:
+    """
+    Fetch performance metrics for a specific individual ad.
+ 
+    Args:
+        ad_id: ID of the ad.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching metrics for ad '{ad_id}' on platform '{platform}'")
+        return registry.fetch_ad_metrics(ad_id=ad_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching ad metrics: {e}")
+        raise
 
 # ==========================================
 #                RESOURCES

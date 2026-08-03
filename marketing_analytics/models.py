@@ -55,3 +55,44 @@ class MarketingReport(BaseModel):
     average_ctr: float = Field(..., description="Combined Click-Through Rate")
     average_cpc: float = Field(..., description="Combined Cost Per Click")
     average_roas: float = Field(..., description="Combined Return on Ad Spend")
+
+class AdGroup(BaseModel):
+    """Ad group / ad set — level di antara Campaign dan Ad individual."""
+    ad_group_id: str = Field(..., description="Unique identifier for the ad group")
+    ad_group_name: str = Field(..., description="Name of the ad group")
+    campaign_id: str = Field(..., description="ID of the parent campaign")
+    platform: str = Field(..., description="The platform this ad group belongs to")
+    status: str = Field(..., description="Ad group status (e.g., ENABLED, PAUSED, REMOVED)")
+ 
+class Ad(BaseModel):
+    """Individual ad creative."""
+    ad_id: str = Field(..., description="Unique identifier for the ad")
+    ad_name: Optional[str] = Field(None, description="Ad name/label if available (some ad types like RSA don't have a single name)")
+    ad_group_id: str = Field(..., description="ID of the parent ad group")
+    platform: str = Field(..., description="The platform this ad belongs to")
+    status: str = Field(..., description="Ad status (e.g., ENABLED, PAUSED, REMOVED)")
+    ad_type: str = Field(..., description="Ad format/type (e.g., RESPONSIVE_SEARCH_AD)")
+ 
+class AdGroupMetrics(BaseModel):
+    """Performance metrics for a specific ad group."""
+    ad_group_id: str = Field(..., description="Ad group identifier")
+    platform: str = Field(..., description="The platform")
+    impressions: int
+    clicks: int
+    spend: float
+    conversions: int
+    ctr: float
+    cpc: float
+    roas: float
+ 
+class AdMetrics(BaseModel):
+    """Performance metrics for a specific ad."""
+    ad_id: str = Field(..., description="Ad identifier")
+    platform: str = Field(..., description="The platform")
+    impressions: int
+    clicks: int
+    spend: float
+    conversions: int
+    ctr: float
+    cpc: float
+    roas: float

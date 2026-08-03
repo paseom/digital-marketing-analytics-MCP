@@ -189,6 +189,157 @@ class GoogleAdsConnector(BaseMarketingConnector):
             cpc=round(cpc, 2),
             roas=round(roas, 2),
         )
+        
+    # ---------------------------------------------------------------
+    # Ad Groups
+    # ---------------------------------------------------------------
+ 
+    def fetch_ad_groups(self, campaign_id: str) -> list:
+        query = f"""
+            SELECT
+                ad_group.id,
+                ad_group.name,
+                ad_group.status,
+                ad_group.campaign
+            FROM ad_group
+            WHERE campaign.id = {int(campaign_id)}
+            ORDER BY ad_group.id
+        """
+        rows = self._execute_query(query)
+ 
+        from marketing_analytics.models import AdGroup
+        ad_groups = []
+        for row in rows:
+            ad_groups.append(
+                AdGroup(
+                    ad_group_id=str(row.ad_group.id),
+                    ad_group_name=row.ad_group.name,
+                    campaign_id=campaign_id,
+                    platform=self.get_platform_name(),
+                    status=row.ad_group.status.name,
+                )
+            )
+        return ad_groups
+ 
+    # ---------------------------------------------------------------
+    # Ads
+    # ---------------------------------------------------------------
+ 
+    def fetch_ads(self, ad_group_id: str) -> list:
+        query = f"""
+            SELECT
+                ad_group_ad.ad.id,
+                ad_group_ad.ad.name,
+                ad_group_ad.ad.type,
+                ad_group_ad.status,
+                ad_group_ad.ad_group
+            FROM ad_group_ad
+            WHERE ad_group.id = {int(ad_group_id)}
+            ORDER BY ad_group_ad.ad.id
+        """
+        rows = self._execute_query(query)
+ 
+        from marketing_analytics.models import Ad
+        ads = []
+        for row in rows:
+            # Beberapa tipe ad (misal Responsive Search Ad) gak punya field "name"
+            # tunggal — ad.name bisa kosong, fallback ke label generik.
+            ad_name = row.ad_group_ad.ad.name or f"Ad {row.ad_group_ad.ad.id} ({row.ad_group_ad.ad.type.name})"
+            ads.append(
+                Ad(
+                    ad_id=str(row.ad_group_ad.ad.id),
+                    ad_name=ad_name,
+                    ad_group_id=ad_group_id,
+                    platform=self.get_platform_name(),
+                    status=row.ad_group_ad.status.name,
+                    ad_type=row.ad_group_ad.ad.type.name,
+                )
+            )
+        return ads
+ 
+    # ---------------------------------------------------------------
+    # Ad Group metrics
+    # ---------------------------------------------------------------
+ 
+    def fetch_ad_group_metrics(self, ad_group_id: str):
+        query = f"""
+            SELECT
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.conversions_value
+            FROM ad_group
+            WHERE ad_group.id = {int(ad_group_id)}
+                AND segments.date DURING LAST_30_DAYS
+        """
+        rows = self._execute_query(query)
+ 
+        impressions = sum(r.metrics.impressions for r in rows)
+        clicks = sum(r.metrics.clicks for r in rows)
+        cost_micros = sum(r.metrics.cost_micros for r in rows)
+        conversions = sum(r.metrics.conversions for r in rows)
+        conversions_value = sum(r.metrics.conversions_value for r in rows)
+ 
+        spend = cost_micros / 1_000_000
+        ctr = (clicks / impressions) if impressions else 0.0
+        cpc = (spend / clicks) if clicks else 0.0
+        roas = (conversions_value / spend) if spend else 0.0
+ 
+        from marketing_analytics.models import AdGroupMetrics
+        return AdGroupMetrics(
+            ad_group_id=ad_group_id,
+            platform=self.get_platform_name(),
+            impressions=impressions,
+            clicks=clicks,
+            spend=round(spend, 2),
+            conversions=int(conversions),
+            ctr=round(ctr, 4),
+            cpc=round(cpc, 2),
+            roas=round(roas, 2),
+        )
+ 
+    # ---------------------------------------------------------------
+    # Ad metrics
+    # ---------------------------------------------------------------
+ 
+    def fetch_ad_metrics(self, ad_id: str):
+        query = f"""
+            SELECT
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.conversions_value
+            FROM ad_group_ad
+            WHERE ad_group_ad.ad.id = {int(ad_id)}
+                AND segments.date DURING LAST_30_DAYS
+        """
+        rows = self._execute_query(query)
+ 
+        impressions = sum(r.metrics.impressions for r in rows)
+        clicks = sum(r.metrics.clicks for r in rows)
+        cost_micros = sum(r.metrics.cost_micros for r in rows)
+        conversions = sum(r.metrics.conversions for r in rows)
+        conversions_value = sum(r.metrics.conversions_value for r in rows)
+ 
+        spend = cost_micros / 1_000_000
+        ctr = (clicks / impressions) if impressions else 0.0
+        cpc = (spend / clicks) if clicks else 0.0
+        roas = (conversions_value / spend) if spend else 0.0
+ 
+        from marketing_analytics.models import AdMetrics
+        return AdMetrics(
+            ad_id=ad_id,
+            platform=self.get_platform_name(),
+            impressions=impressions,
+            clicks=clicks,
+            spend=round(spend, 2),
+            conversions=int(conversions),
+            ctr=round(ctr, 4),
+            cpc=round(cpc, 2),
+            roas=round(roas, 2),
+        )
 
     # ---------------------------------------------------------------
     # Aggregated report across a date range

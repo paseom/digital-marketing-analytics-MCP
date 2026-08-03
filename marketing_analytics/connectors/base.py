@@ -39,3 +39,19 @@ class BaseMarketingConnector(ABC):
     def get_sample_data(self) -> Dict[str, Any]:
         """Return a sample raw response payload from this platform for testing and debugging."""
         pass
+    
+    def fetch_ad_groups(self, campaign_id: str):
+        """Fetch ad groups under a specific campaign. Optional — override if platform supports it."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung data level ad group.")
+ 
+    def fetch_ads(self, ad_group_id: str):
+        """Fetch ads under a specific ad group. Optional — override if platform supports it."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung data level ad.")
+ 
+    def fetch_ad_group_metrics(self, ad_group_id: str):
+        """Fetch performance metrics for a specific ad group. Optional."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung metrics level ad group.")
+ 
+    def fetch_ad_metrics(self, ad_id: str):
+        """Fetch performance metrics for a specific ad. Optional."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung metrics level ad.")
