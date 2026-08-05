@@ -101,29 +101,111 @@ ATURAN FORMAT JAWABAN (WAJIB diikuti konsisten setiap saat):
     - fetch_ad_groups(campaign_id, platform) untuk dapat daftar ad group
     - fetch_ads(ad_group_id, platform) untuk dapat daftar ad individual
     - fetch_ad_group_metrics() / fetch_ad_metrics() untuk performa di level itu
-"""
+14. Bisa jadi ada LEBIH DARI SATU akun pada platform yang terhubung, masing-masing
+   punya "platform key" teknis (misal "google_ads_hiid") yang beda dari nama
+   akun aslinya (misal "HIID Marketing"). Kalau user menyebut nama akun,
+   nama campaign, atau tidak menyebut akun sama sekali:
+   - Panggil fetch_account_info() dulu untuk melihat semua akun yang tersedia
+     beserta nama aslinya dan platform key masing-masing.
+   - Kalau user menyebut nama campaign tapi bukan ID, panggil fetch_campaigns()
+     dulu untuk mencocokkan nama ke campaign_id yang benar sebelum memanggil
+     fetch_campaign_metrics().
+   - Kalau user tidak menyebut akun sama sekali dan ada lebih dari satu akun
+     terdaftar, tanya dulu akun mana yang dimaksud — jangan menebak.
+   - kalau user tidak menyebut nama platform, tunjukan akun yang dituju dari semua platform
+   """
+
+_use_system_instruction = str(st.secrets.get("REQUIRE_SYSTEM_INSTRUCTION", "true")).lower() != "false"
+ACTIVE_SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION if _use_system_instruction else None
+
+def _flatten_exc(exc) -> list[str]:
+    if isinstance(exc, BaseExceptionGroup):
+        result = []
+        for sub in exc.exceptions:
+            result.extend(_flatten_exc(sub))
+        return result
+    return [f"{type(exc).__name__}: {exc}"]
+
+def parse_mcp_content(content_items) -> str:
+    """Turn MCP tool result content into a single clean JSON string.
+    Handles both cases: one content block with one JSON array/object, OR
+    multiple content blocks each with their own JSON doc (happens when a
+    tool returns a list — FastMCP can emit one text block per list item).
+    Always returns valid, re-serialized JSON text (or the raw text as a
+    last resort if it truly isn't JSON)."""
+    texts = [item.text for item in content_items if hasattr(item, "text")]
+    if not texts:
+        return ""
+    if len(texts) == 1:
+        return texts[0]  # normal case, already one valid JSON document
+ 
+    parsed_items = []
+    for t in texts:
+        try:
+            parsed_items.append(json.loads(t))
+        except json.JSONDecodeError:
+            parsed_items.append(t)
+    return json.dumps(parsed_items)
+
+async def _list_accounts_async():
+    async with streamablehttp_client(MCP_SERVER_URL) as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool("fetch_account_info", {})
+            return json.loads(parse_mcp_content(result.content))
+        
+@st.cache_data(ttl=300, show_spinner=False)
+def list_available_accounts():
+    """Fetch all registered ad accounts (name + platform key) for the dropdown.
+    Cached 5 minutes so it doesn't hit the MCP server on every rerun."""
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(asyncio.run, _list_accounts_async())
+            accounts = future.result()
+        return [(acc["account_name"], acc["platform"]) for acc in accounts]
+    except Exception as eg:
+        st.error("Gagal ambil daftar akun: " + "; ".join(_flatten_exc(eg)))  # TEMPORARY debug
+        return []
 
 st.set_page_config(page_title="Marketing Analytics Chat", page_icon="📊", layout="centered")
 
 ALLOWED_EMAIL_DOMAIN = "i-dacasia.com"  
+REQUIRE_AUTH = str(st.secrets.get("REQUIRE_AUTH", "true")).lower() != "false"
 
-if not st.user.is_logged_in:
-    st.title("📊 Marketing Analytics Chat")
-    st.write("Silakan login untuk mengakses chat ini.")
-    if st.button("Log in dengan Google"):
-        st.login("google")
-    st.stop()
- 
-user_email = st.user.email or ""
-if not user_email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
-    st.error(f"Email Tidak Valid. Silakan login dengan email @{ALLOWED_EMAIL_DOMAIN}.")
-    if st.button("Log out"):
-        st.logout()
-    st.stop()
+if REQUIRE_AUTH:
+    if not st.user.is_logged_in:
+        st.title("📊 Marketing Analytics Chat")
+        st.write("Silakan login pakai email kantor untuk mengakses chat ini.")
+        if st.button("Log in dengan Google"):
+            st.login("google")
+        st.stop()
+
+    user_email = st.user.email or ""
+    if not user_email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
+        st.error(f"Akses ditolak. Chat ini cuma untuk email @{ALLOWED_EMAIL_DOMAIN}.")
+        if st.button("Log out"):
+            st.logout()
+        st.stop()
     
 st.title("📊 Marketing Analytics Chat")
-st.caption("Tanya soal performa campaign — data langsung dari Dashboard.")
+st.caption("Ask about campaign — real-time data from marketing platforms.")
 
+accounts = list_available_accounts()
+if accounts:
+    account_labels = ["🌐 Semua akun"] + [name for name, _ in accounts]
+    selected_label = st.selectbox("Akun yang sedang dipakai:", account_labels)
+    if selected_label == "🌐 Semua akun":
+        st.session_state.selected_platform = None
+        st.session_state.selected_account_name = None
+    else:
+        matched_platform = next(p for name, p in accounts if name == selected_label)
+        st.session_state.selected_platform = matched_platform
+        st.session_state.selected_account_name = selected_label
+else:
+    st.session_state.selected_platform = None
+    st.session_state.selected_account_name = None
+    st.caption("⚠️ Gak bisa ambil daftar akun dari MCP server — cek koneksi.")
+    
 if not GEMINI_API_KEY or not MCP_SERVER_URL:
     st.error("GEMINI_API_KEY atau MCP_SERVER_URL belum diset di Secrets. Cek Settings > Secrets.")
     st.stop()
@@ -184,7 +266,7 @@ def try_extract_table(raw_value) -> pd.DataFrame | None:
     return None
 
 
-async def ask_gemini(question: str, history: list):
+async def ask_gemini(question: str, history: list, account_context: str = None):
     client = genai.Client(api_key=GEMINI_API_KEY)
 
     async with streamablehttp_client(MCP_SERVER_URL) as (read, write, _):
@@ -197,6 +279,19 @@ async def ask_gemini(question: str, history: list):
 
             contents = list(history) + [{"role": "user", "parts": [{"text": question}]}]
             last_table = None
+            
+            effective_instruction = ACTIVE_SYSTEM_INSTRUCTION
+            if account_context and effective_instruction:
+                effective_instruction = effective_instruction + f"""
+
+KONTEKS AKUN AKTIF (PENTING):
+User sedang fokus pada akun dengan platform key "{account_context}". Kalau user
+TIDAK menyebut akun/nama campaign dari akun lain secara eksplisit di pertanyaannya,
+gunakan platform key ini untuk semua pemanggilan tool yang butuh parameter
+"platform" — TIDAK PERLU memanggil fetch_account_info() untuk mencari tahu akun
+mana yang dimaksud, langsung pakai platform key ini. Kalau user secara eksplisit
+menyebut nama akun lain yang berbeda, ikuti prosedur pencarian akun seperti biasa.
+"""
 
             for _ in range(MAX_TOOL_ROUNDS):
                 response = await client.aio.models.generate_content(
@@ -205,7 +300,7 @@ async def ask_gemini(question: str, history: list):
                     config=types.GenerateContentConfig(
                         tools=gemini_tools,
                         temperature=0.2,
-                        system_instruction=SYSTEM_INSTRUCTION,
+                        system_instruction=effective_instruction,
                     ),
                 )
 
@@ -247,12 +342,11 @@ async def ask_gemini(question: str, history: list):
             return "Maaf, terlalu banyak langkah diperlukan untuk menjawab ini.", last_table
 
 
-def run_ask_gemini_isolated(question: str, history: list):
+def run_ask_gemini_isolated(question: str, history: list, account_context: str = None):
     """Run the whole async flow in a dedicated thread with its own event loop."""
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(asyncio.run, ask_gemini(question, history))
+        future = executor.submit(asyncio.run, ask_gemini(question, history, account_context))
         return future.result()
-
 
 def flatten_exceptions(exc) -> list[str]:
     if isinstance(exc, BaseExceptionGroup):
@@ -281,8 +375,10 @@ for msg in st.session_state.messages:
 question = st.chat_input("Contoh: gimana performa campaign bulan ini?")
 if question:
     if st.session_state.question_count >= MAX_QUESTIONS_PER_SESSION:
-        st.error(f"Maaf, Anda telah mencapai batas maksimum {MAX_QUESTIONS_PER_SESSION} pertanyaan per sesi.")
+        st.warning(f"Sesi ini udah mencapai batas {MAX_QUESTIONS_PER_SESSION} pertanyaan. Refresh halaman untuk mulai sesi baru.")
         st.stop()
+    st.session_state.question_count += 1
+        
     st.session_state.messages.append({"role": "user", "text": question, "table": None})
     with st.chat_message("user"):
         st.markdown(question)
@@ -295,7 +391,7 @@ if question:
     with st.chat_message("assistant"):
         with st.spinner("Mengambil data..."):
             try:
-                answer_text, table = run_ask_gemini_isolated(question, history)
+                answer_text, table = run_ask_gemini_isolated(question, history, st.session_state.selected_platform)
             except* Exception as eg:
                 sub_errors = "; ".join(flatten_exceptions(eg))
                 answer_text, table = f"Terjadi error: {sub_errors}", None
