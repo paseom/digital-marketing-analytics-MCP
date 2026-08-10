@@ -59,6 +59,26 @@ class ConnectorRegistry:
     def fetch_ad_metrics(self, ad_id: str, platform: str):
         """Fetch metrics for a specific ad on a specific platform."""
         return self.get_connector(platform).fetch_ad_metrics(ad_id)
+    
+    def fetch_asset_groups(self, campaign_id: str, platform: str):
+        """Fetch asset groups under a campaign on a specific platform."""
+        return self.get_connector(platform).fetch_asset_groups(campaign_id)
+ 
+    def fetch_assets(self, asset_group_id: str, platform: str):
+        """Fetch assets under an asset group on a specific platform."""
+        return self.get_connector(platform).fetch_assets(asset_group_id)
+ 
+    def fetch_asset_group_metrics(self, asset_group_id: str, platform: str):
+        """Fetch metrics for a specific asset group on a specific platform."""
+        return self.get_connector(platform).fetch_asset_group_metrics(asset_group_id)
+    
+    def fetch_keywords(self, ad_group_id: str, platform: str):
+        """Fetch keywords under an ad group on a specific platform."""
+        return self.get_connector(platform).fetch_keywords(ad_group_id)
+ 
+    def fetch_keyword_metrics(self, keyword_id: str, platform: str):
+        """Fetch metrics for a specific keyword on a specific platform."""
+        return self.get_connector(platform).fetch_keyword_metrics(keyword_id)
 
     def generate_report(self, platforms: List[str], start_date: str, end_date: str) -> MarketingReport:
         """Generate an aggregated MarketingReport across selected platforms."""

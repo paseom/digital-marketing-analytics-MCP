@@ -1,37 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 
-class AccountInfo(BaseModel):
-    """Metadata about a marketing/advertiser account."""
-    account_id: str = Field(..., description="Unique identifier for the account")
-    account_name: str = Field(..., description="Name of the advertiser account")
-    platform: str = Field(..., description="The ad platform (e.g., google_ads, meta_ads, tiktok_ads, ga4)")
-    currency: str = Field(..., description="Currency code used in the account (e.g., USD, EUR, IDR)")
-    timezone: str = Field(..., description="Timezone of the account (e.g., UTC, America/New_York, Asia/Jakarta)")
-    status: str = Field(..., description="Status of the account (e.g., ACTIVE, SUSPENDED, PENDING)")
-
-class Campaign(BaseModel):
-    """Metadata about an ad campaign."""
-    campaign_id: str = Field(..., description="Unique identifier for the campaign")
-    campaign_name: str = Field(..., description="Name of the campaign")
-    platform: str = Field(..., description="The platform this campaign belongs to")
-    status: str = Field(..., description="Campaign delivery status (e.g., ENABLED, PAUSED, REMOVED)")
-    budget: float = Field(..., description="Daily or lifetime budget of the campaign")
-    start_date: str = Field(..., description="Start date of the campaign in YYYY-MM-DD format")
-    end_date: Optional[str] = Field(None, description="End date of the campaign in YYYY-MM-DD format (optional)")
-
-class CampaignMetrics(BaseModel):
-    """Performance metrics for a specific campaign or aggregated platform."""
-    campaign_id: Optional[str] = Field(None, description="Campaign identifier (optional if aggregated)")
-    platform: str = Field(..., description="The platform (e.g., google_ads, meta_ads, tiktok_ads, ga4)")
-    impressions: int = Field(..., description="Number of times ads were displayed")
-    clicks: int = Field(..., description="Number of times ads were clicked")
-    spend: float = Field(..., description="Total cost of delivery in account currency")
-    conversions: int = Field(..., description="Number of desired conversions achieved")
-    ctr: float = Field(..., description="Click-Through Rate (clicks / impressions) as a fraction/percentage")
-    cpc: float = Field(..., description="Cost Per Click (spend / clicks)")
-    roas: float = Field(..., description="Return on Ad Spend (revenue generated / spend). Assume nominal conversion value for placeholders.")
-
 class PlatformReport(BaseModel):
     """Aggregated report for a single platform."""
     platform: str = Field(..., description="The platform name")
@@ -55,6 +24,38 @@ class MarketingReport(BaseModel):
     average_ctr: float = Field(..., description="Combined Click-Through Rate")
     average_cpc: float = Field(..., description="Combined Cost Per Click")
     average_roas: float = Field(..., description="Combined Return on Ad Spend")
+
+class AccountInfo(BaseModel):
+    """Metadata about a marketing/advertiser account."""
+    account_id: str = Field(..., description="Unique identifier for the account")
+    account_name: str = Field(..., description="Name of the advertiser account")
+    platform: str = Field(..., description="The ad platform (e.g., google_ads, meta_ads, tiktok_ads, ga4)")
+    currency: str = Field(..., description="Currency code used in the account (e.g., USD, EUR, IDR)")
+    timezone: str = Field(..., description="Timezone of the account (e.g., UTC, America/New_York, Asia/Jakarta)")
+    status: str = Field(..., description="Status of the account (e.g., ACTIVE, SUSPENDED, PENDING)")
+
+class Campaign(BaseModel):
+    """Metadata about an ad campaign."""
+    campaign_id: str = Field(..., description="Unique identifier for the campaign")
+    campaign_name: str = Field(..., description="Name of the campaign")
+    platform: str = Field(..., description="The platform this campaign belongs to")
+    status: str = Field(..., description="Campaign delivery status (e.g., ENABLED, PAUSED, REMOVED)")
+    budget: float = Field(..., description="Daily or lifetime budget of the campaign")
+    start_date: str = Field(..., description="Start date of the campaign in YYYY-MM-DD format")
+    end_date: Optional[str] = Field(None, description="End date of the campaign in YYYY-MM-DD format (optional)")
+    campaign_type: str = Field(..., description="Advertising channel type (SEARCH, PERFORMANCE_MAX, DEMAND_GEN, SMART, dst)")
+
+class CampaignMetrics(BaseModel):
+    """Performance metrics for a specific campaign or aggregated platform."""
+    campaign_id: Optional[str] = Field(None, description="Campaign identifier (optional if aggregated)")
+    platform: str = Field(..., description="The platform (e.g., google_ads, meta_ads, tiktok_ads, ga4)")
+    impressions: int = Field(..., description="Number of times ads were displayed")
+    clicks: int = Field(..., description="Number of times ads were clicked")
+    spend: float = Field(..., description="Total cost of delivery in account currency")
+    conversions: int = Field(..., description="Number of desired conversions achieved")
+    ctr: float = Field(..., description="Click-Through Rate (clicks / impressions) as a fraction/percentage")
+    cpc: float = Field(..., description="Cost Per Click (spend / clicks)")
+    roas: float = Field(..., description="Return on Ad Spend (revenue generated / spend). Assume nominal conversion value for placeholders.")
 
 class AdGroup(BaseModel):
     """Ad group / ad set — level di antara Campaign dan Ad individual."""
@@ -88,6 +89,59 @@ class AdGroupMetrics(BaseModel):
 class AdMetrics(BaseModel):
     """Performance metrics for a specific ad."""
     ad_id: str = Field(..., description="Ad identifier")
+    platform: str = Field(..., description="The platform")
+    impressions: int
+    clicks: int
+    spend: float
+    conversions: int
+    ctr: float
+    cpc: float
+    roas: float
+
+class AssetGroup(BaseModel):
+    """Asset Group — pengganti Ad Group untuk campaign tipe Performance Max & Demand Gen."""
+    asset_group_id: str = Field(..., description="Unique identifier for the asset group")
+    asset_group_name: str = Field(..., description="Name of the asset group")
+    campaign_id: str = Field(..., description="ID of the parent campaign")
+    platform: str = Field(..., description="The platform")
+    status: str = Field(..., description="Asset group status")
+ 
+class Asset(BaseModel):
+    """Individual asset (gambar/teks/video) di dalam Asset Group.
+    CATATAN: Google Ads TIDAK menyediakan angka impression per-asset individual,
+    cuma performance_label (LOW/GOOD/BEST). Angka metrics beneran ada di level
+    AssetGroup, bukan di sini."""
+    asset_id: str = Field(..., description="Unique identifier for the asset")
+    asset_type: str = Field(..., description="TEXT, IMAGE, VIDEO, dll")
+    content_summary: str = Field(..., description="Isi teks asset, atau placeholder [image]/[video] kalau bukan teks")
+    asset_group_id: str = Field(..., description="ID of the parent asset group")
+    platform: str = Field(..., description="The platform")
+    performance_label: str = Field(..., description="LOW, GOOD, BEST, atau UNKNOWN — bukan angka, ini kategori dari Google")
+ 
+class AssetGroupMetrics(BaseModel):
+    """Performance metrics untuk satu Asset Group — INI yang punya angka impression asli."""
+    asset_group_id: str = Field(..., description="Asset group identifier")
+    platform: str = Field(..., description="The platform")
+    impressions: int
+    clicks: int
+    spend: float
+    conversions: int
+    ctr: float
+    cpc: float
+    roas: float
+class Keyword(BaseModel):
+    """Search keyword — nempel di level Ad Group, nentuin kapan ad ditampilkan."""
+    keyword_id: str = Field(..., description="Unique identifier for the keyword criterion")
+    keyword_text: str = Field(..., description="The actual keyword text")
+    match_type: str = Field(..., description="Match type (EXACT, PHRASE, BROAD)")
+    ad_group_id: str = Field(..., description="ID of the parent ad group")
+    platform: str = Field(..., description="The platform")
+    status: str = Field(..., description="Keyword status (ENABLED, PAUSED, REMOVED)")
+ 
+ 
+class KeywordMetrics(BaseModel):
+    """Performance metrics for a specific keyword."""
+    keyword_id: str = Field(..., description="Keyword identifier")
     platform: str = Field(..., description="The platform")
     impressions: int
     clicks: int

@@ -55,3 +55,15 @@ class BaseMarketingConnector(ABC):
     def fetch_ad_metrics(self, ad_id: str):
         """Fetch performance metrics for a specific ad. Optional."""
         raise NotImplementedError(f"{self.get_platform_name()} belum mendukung metrics level ad.")
+    
+    def fetch_asset_groups(self, campaign_id: str):
+        """Fetch asset groups (PMax/Demand Gen). Optional — override if platform supports it."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung data level asset group.")
+ 
+    def fetch_assets(self, asset_group_id: str):
+        """Fetch assets under a specific asset group. Optional."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung data level asset.")
+ 
+    def fetch_asset_group_metrics(self, asset_group_id: str):
+        """Fetch performance metrics for a specific asset group. Optional."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung metrics level asset group.")

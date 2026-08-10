@@ -9,6 +9,7 @@ from marketing_analytics.connectors import registry
 from marketing_analytics.models import (
     AccountInfo, Campaign, CampaignMetrics, MarketingReport,
     AdGroup, Ad, AdGroupMetrics, AdMetrics,
+    Keyword, KeywordMetrics, AssetGroup, Asset, AssetGroupMetrics
 )
 
 # Configure simple logging to stderr (stdio transport safe)
@@ -87,24 +88,6 @@ def fetch_account_info(platform: Optional[str] = None) -> List[AccountInfo]:
         raise
 
 @mcp.tool()
-def generate_report(platforms: Optional[List[str]] = None, start_date: str = "2026-07-01", end_date: str = "2026-07-10") -> MarketingReport:
-    """
-    Generate an aggregated performance report across multiple marketing platforms.
-    
-    Args:
-        platforms: List of platform names to include (google_ads, meta_ads, tiktok_ads, ga4). Defaults to all platforms if empty or None.
-        start_date: Report start date (YYYY-MM-DD).
-        end_date: Report end date (YYYY-MM-DD).
-    """
-    try:
-        platforms_list = platforms or []
-        logger.info(f"Generating marketing report for platforms={platforms_list}, from {start_date} to {end_date}")
-        return registry.generate_report(platforms=platforms_list, start_date=start_date, end_date=end_date)
-    except Exception as e:
-        logger.error(f"Error generating report: {e}")
-        raise
-
-@mcp.tool()
 def fetch_ad_groups(campaign_id: str, platform: str) -> List[AdGroup]:
     """
     Fetch ad groups (ad sets) under a specific campaign.
@@ -168,6 +151,106 @@ def fetch_ad_metrics(ad_id: str, platform: str) -> AdMetrics:
         logger.error(f"Error fetching ad metrics: {e}")
         raise
 
+@mcp.tool()
+def fetch_asset_groups(campaign_id: str, platform: str) -> List[AssetGroup]:
+    """
+    Fetch asset groups under a specific campaign (Performance Max / Demand Gen campaigns only).
+ 
+    Args:
+        campaign_id: ID of the parent campaign.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching asset groups for campaign '{campaign_id}' on platform '{platform}'")
+        return registry.fetch_asset_groups(campaign_id=campaign_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching asset groups: {e}")
+        raise
+ 
+@mcp.tool()
+def fetch_assets(asset_group_id: str, platform: str) -> List[Asset]:
+    """
+    Fetch individual assets (creative pieces) under a specific asset group.
+    NOTE: individual assets don't have numeric impression data, only a
+    performance_label (LOW/GOOD/BEST). Real metrics are at the asset group level.
+ 
+    Args:
+        asset_group_id: ID of the parent asset group.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching assets for asset group '{asset_group_id}' on platform '{platform}'")
+        return registry.fetch_assets(asset_group_id=asset_group_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching assets: {e}")
+        raise
+ 
+@mcp.tool()
+def fetch_asset_group_metrics(asset_group_id: str, platform: str) -> AssetGroupMetrics:
+    """
+    Fetch performance metrics for a specific asset group.
+ 
+    Args:
+        asset_group_id: ID of the asset group.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching metrics for asset group '{asset_group_id}' on platform '{platform}'")
+        return registry.fetch_asset_group_metrics(asset_group_id=asset_group_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching asset group metrics: {e}")
+        raise
+
+@mcp.tool()
+def fetch_keywords(ad_group_id: str, platform: str) -> List[Keyword]:
+    """
+    Fetch keywords under a specific ad group.
+ 
+    Args:
+        ad_group_id: ID of the parent ad group.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching keywords for ad group '{ad_group_id}' on platform '{platform}'")
+        return registry.fetch_keywords(ad_group_id=ad_group_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching keywords: {e}")
+        raise
+ 
+@mcp.tool()
+def fetch_keyword_metrics(keyword_id: str, platform: str) -> KeywordMetrics:
+    """
+    Fetch performance metrics for a specific keyword.
+ 
+    Args:
+        keyword_id: ID of the keyword.
+        platform: Platform name.
+    """
+    try:
+        logger.info(f"Fetching metrics for keyword '{keyword_id}' on platform '{platform}'")
+        return registry.fetch_keyword_metrics(keyword_id=keyword_id, platform=platform)
+    except Exception as e:
+        logger.error(f"Error fetching keyword metrics: {e}")
+        raise
+
+@mcp.tool()
+def generate_report(platforms: Optional[List[str]] = None, start_date: str = "2026-07-01", end_date: str = "2026-07-10") -> MarketingReport:
+    """
+    Generate an aggregated performance report across multiple marketing platforms.
+    
+    Args:
+        platforms: List of platform names to include (google_ads, meta_ads, tiktok_ads, ga4). Defaults to all platforms if empty or None.
+        start_date: Report start date (YYYY-MM-DD).
+        end_date: Report end date (YYYY-MM-DD).
+    """
+    try:
+        platforms_list = platforms or []
+        logger.info(f"Generating marketing report for platforms={platforms_list}, from {start_date} to {end_date}")
+        return registry.generate_report(platforms=platforms_list, start_date=start_date, end_date=end_date)
+    except Exception as e:
+        logger.error(f"Error generating report: {e}")
+        raise
+    
 # ==========================================
 #                RESOURCES
 # ==========================================

@@ -120,12 +120,13 @@ class GoogleAdsConnector(BaseMarketingConnector):
             campaign.status,
             campaign.start_date_time,
             campaign.end_date_time,
+            campaign.advertising_channel_type,
             campaign_budget.amount_micros
         FROM campaign
         ORDER BY campaign.id
         """
         rows = self._execute_query(query)
-        
+ 
         campaigns = []
         for row in rows:
             campaigns.append(
@@ -137,6 +138,7 @@ class GoogleAdsConnector(BaseMarketingConnector):
                     budget=round(row.campaign_budget.amount_micros / 1_000_000, 2),
                     start_date=str(row.campaign.start_date_time) if row.campaign.start_date_time else "",
                     end_date=str(row.campaign.end_date_time) if row.campaign.end_date_time else None,
+                    campaign_type=row.campaign.advertising_channel_type.name,
                 )
             )
         return campaigns
@@ -340,7 +342,197 @@ class GoogleAdsConnector(BaseMarketingConnector):
             cpc=round(cpc, 2),
             roas=round(roas, 2),
         )
-
+        
+    # ---------------------------------------------------------------
+    # Keywords
+    # ---------------------------------------------------------------
+ 
+    def fetch_keywords(self, ad_group_id: str) -> list:
+        query = f"""
+            SELECT
+                ad_group_criterion.criterion_id,
+                ad_group_criterion.keyword.text,
+                ad_group_criterion.keyword.match_type,
+                ad_group_criterion.status,
+                ad_group_criterion.ad_group
+            FROM keyword_view
+            WHERE ad_group.id = {int(ad_group_id)}
+            ORDER BY ad_group_criterion.criterion_id
+        """
+        rows = self._execute_query(query)
+ 
+        from marketing_analytics.models import Keyword
+        keywords = []
+        for row in rows:
+            keywords.append(
+                Keyword(
+                    keyword_id=str(row.ad_group_criterion.criterion_id),
+                    keyword_text=row.ad_group_criterion.keyword.text,
+                    match_type=row.ad_group_criterion.keyword.match_type.name,
+                    ad_group_id=ad_group_id,
+                    platform=self.get_platform_name(),
+                    status=row.ad_group_criterion.status.name,
+                )
+            )
+        return keywords
+ 
+    # ---------------------------------------------------------------
+    # Keyword metrics
+    # ---------------------------------------------------------------
+ 
+    def fetch_keyword_metrics(self, keyword_id: str):
+        query = f"""
+            SELECT
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.conversions_value
+            FROM keyword_view
+            WHERE ad_group_criterion.criterion_id = {int(keyword_id)}
+                AND segments.date DURING LAST_30_DAYS
+        """
+        rows = self._execute_query(query)
+ 
+        impressions = sum(r.metrics.impressions for r in rows)
+        clicks = sum(r.metrics.clicks for r in rows)
+        cost_micros = sum(r.metrics.cost_micros for r in rows)
+        conversions = sum(r.metrics.conversions for r in rows)
+        conversions_value = sum(r.metrics.conversions_value for r in rows)
+ 
+        spend = cost_micros / 1_000_000
+        ctr = (clicks / impressions) if impressions else 0.0
+        cpc = (spend / clicks) if clicks else 0.0
+        roas = (conversions_value / spend) if spend else 0.0
+ 
+        from marketing_analytics.models import KeywordMetrics
+        return KeywordMetrics(
+            keyword_id=keyword_id,
+            platform=self.get_platform_name(),
+            impressions=impressions,
+            clicks=clicks,
+            spend=round(spend, 2),
+            conversions=int(conversions),
+            ctr=round(ctr, 4),
+            cpc=round(cpc, 2),
+            roas=round(roas, 2),
+        )
+        
+    # ---------------------------------------------------------------
+    # Asset Groups (Performance Max & Demand Gen)
+    # ---------------------------------------------------------------
+ 
+    def fetch_asset_groups(self, campaign_id: str) -> list:
+        query = f"""
+            SELECT
+                asset_group.id,
+                asset_group.name,
+                asset_group.status,
+                asset_group.campaign
+            FROM asset_group
+            WHERE campaign.id = {int(campaign_id)}
+            ORDER BY asset_group.id
+        """
+        rows = self._execute_query(query)
+ 
+        from marketing_analytics.models import AssetGroup
+        asset_groups = []
+        for row in rows:
+            asset_groups.append(
+                AssetGroup(
+                    asset_group_id=str(row.asset_group.id),
+                    asset_group_name=row.asset_group.name,
+                    campaign_id=campaign_id,
+                    platform=self.get_platform_name(),
+                    status=row.asset_group.status.name,
+                )
+            )
+        return asset_groups
+ 
+    # ---------------------------------------------------------------
+    # Assets (individual creative pieces di dalam asset group)
+    # ---------------------------------------------------------------
+ 
+    def fetch_assets(self, asset_group_id: str) -> list:
+        query = f"""
+            SELECT
+                asset_group_asset.asset,
+                asset_group_asset.field_type,
+                asset_group_asset.performance_label,
+                asset_group_asset.status,
+                asset.id,
+                asset.type,
+                asset.text_asset.text
+            FROM asset_group_asset
+            WHERE asset_group.id = {int(asset_group_id)}
+            ORDER BY asset.id
+        """
+        rows = self._execute_query(query)
+ 
+        from marketing_analytics.models import Asset
+        assets = []
+        for row in rows:
+            # Text asset punya isi teksnya langsung; tipe lain (IMAGE/VIDEO) gak
+            # punya representasi teks, kita kasih placeholder yang jelas.
+            asset_type_name = row.asset.type_.name if hasattr(row.asset, "type_") else row.asset.type.name
+            if asset_type_name == "TEXT" and row.asset.text_asset.text:
+                content_summary = row.asset.text_asset.text
+            else:
+                content_summary = f"[{asset_type_name.lower()}]"
+ 
+            assets.append(
+                Asset(
+                    asset_id=str(row.asset.id),
+                    asset_type=asset_type_name,
+                    content_summary=content_summary,
+                    asset_group_id=asset_group_id,
+                    platform=self.get_platform_name(),
+                    performance_label=row.asset_group_asset.performance_label.name,
+                )
+            )
+        return assets
+ 
+    # ---------------------------------------------------------------
+    # Asset Group metrics (angka beneran, level Asset individual TIDAK punya ini)
+    # ---------------------------------------------------------------
+ 
+    def fetch_asset_group_metrics(self, asset_group_id: str):
+        query = f"""
+            SELECT
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.conversions_value
+            FROM asset_group
+            WHERE asset_group.id = {int(asset_group_id)}
+                AND segments.date DURING LAST_30_DAYS
+        """
+        rows = self._execute_query(query)
+ 
+        impressions = sum(r.metrics.impressions for r in rows)
+        clicks = sum(r.metrics.clicks for r in rows)
+        cost_micros = sum(r.metrics.cost_micros for r in rows)
+        conversions = sum(r.metrics.conversions for r in rows)
+        conversions_value = sum(r.metrics.conversions_value for r in rows)
+ 
+        spend = cost_micros / 1_000_000
+        ctr = (clicks / impressions) if impressions else 0.0
+        cpc = (spend / clicks) if clicks else 0.0
+        roas = (conversions_value / spend) if spend else 0.0
+ 
+        from marketing_analytics.models import AssetGroupMetrics
+        return AssetGroupMetrics(
+            asset_group_id=asset_group_id,
+            platform=self.get_platform_name(),
+            impressions=impressions,
+            clicks=clicks,
+            spend=round(spend, 2),
+            conversions=int(conversions),
+            ctr=round(ctr, 4),
+            cpc=round(cpc, 2),
+            roas=round(roas, 2),
+        )
     # ---------------------------------------------------------------
     # Aggregated report across a date range
     # ---------------------------------------------------------------
