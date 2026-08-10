@@ -495,7 +495,7 @@ for i, msg in enumerate(st.session_state.messages):
             cols = st.columns(len(msg["options"]), gap="large")
             for col, option in zip(cols, msg["options"]):
                 with col:
-                    if st.button(option, key=f"format_{i}_{option}"):
+                    if st.button(option, key=f"format_{i}_{option}", width="content"):
                         st.session_state.format_choice = option
 
 if st.session_state.get("format_choice") and st.session_state.get("pending_question"):
