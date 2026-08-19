@@ -128,6 +128,18 @@ ATURAN FORMAT JAWABAN (WAJIB diikuti konsisten setiap saat):
     apa?" — dan WAJIB akhiri pesanmu dengan baris marker persis format berikut
     (marker ini tidak akan dilihat user, jangan jelaskan apa itu marker):
     [[FORMAT_OPTIONS: Tabel|Ringkasan Teks|Daftar Poin|Grafik|Semua]]
+17. WAJIB: kalau user menyebut nama/periode campaign (misal "campaign March",
+    "bulan Juni", nama campaign yang mengandung bulan), kamu HARUS:
+    a) Ambil start_date dan end_date ASLI campaign itu lewat fetch_campaigns()
+       (field start_date/end_date di data campaign), ATAU tentukan tanggal
+       spesifik sesuai periode yang disebutkan user (misal "March 2026" =
+       start_date="2026-03-01", end_date="2026-03-31").
+    b) SELALU sertakan start_date dan end_date itu secara EKSPLISIT saat
+       memanggil fetch_ad_group_metrics, fetch_ad_metrics, atau
+       fetch_keyword_metrics. JANGAN biarkan parameter tanggal kosong kalau
+       user menyebut periode/campaign tertentu — default tanpa tanggal
+       (30 hari terakhir dari hari ini) HANYA berlaku kalau user tidak
+       menyebut periode sama sekali (misal "performa keyword sekarang").
 """
 
 _use_system_instruction = str(st.secrets.get("REQUIRE_SYSTEM_INSTRUCTION", "true")).lower() != "false"
@@ -495,7 +507,7 @@ for i, msg in enumerate(st.session_state.messages):
             cols = st.columns(len(msg["options"]), gap="large")
             for col, option in zip(cols, msg["options"]):
                 with col:
-                    if st.button(option, key=f"format_{i}_{option}", width=220):
+                    if st.button(option, key=f"format_{i}_{option}", width=520):
                         st.session_state.format_choice = option
 
 if st.session_state.get("format_choice") and st.session_state.get("pending_question"):

@@ -76,9 +76,8 @@ class ConnectorRegistry:
         """Fetch keywords under an ad group on a specific platform."""
         return self.get_connector(platform).fetch_keywords(ad_group_id)
  
-    def fetch_keyword_metrics(self, keyword_id: str, platform: str):
-        """Fetch metrics for a specific keyword on a specific platform."""
-        return self.get_connector(platform).fetch_keyword_metrics(keyword_id)
+    def fetch_keyword_metrics(self, keyword_id: str, ad_group_id: str, platform: str, start_date: str = None, end_date: str = None):
+        return self.get_connector(platform).fetch_keyword_metrics(keyword_id, ad_group_id, start_date, end_date)
 
     def generate_report(self, platforms: List[str], start_date: str, end_date: str) -> MarketingReport:
         """Generate an aggregated MarketingReport across selected platforms."""

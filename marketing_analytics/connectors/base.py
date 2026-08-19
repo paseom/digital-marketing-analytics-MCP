@@ -67,3 +67,7 @@ class BaseMarketingConnector(ABC):
     def fetch_asset_group_metrics(self, asset_group_id: str):
         """Fetch performance metrics for a specific asset group. Optional."""
         raise NotImplementedError(f"{self.get_platform_name()} belum mendukung metrics level asset group.")
+    
+    def fetch_keyword_metrics(self, keyword_id: str, ad_group_id: str, start_date: str = None, end_date: str = None):
+        """Fetch performance metrics for a specific keyword. Optional."""
+        raise NotImplementedError(f"{self.get_platform_name()} belum mendukung metrics level keyword.")

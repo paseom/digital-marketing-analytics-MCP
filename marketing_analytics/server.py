@@ -218,17 +218,18 @@ def fetch_keywords(ad_group_id: str, platform: str) -> List[Keyword]:
         raise
  
 @mcp.tool()
-def fetch_keyword_metrics(keyword_id: str, platform: str) -> KeywordMetrics:
-    """
-    Fetch performance metrics for a specific keyword.
- 
+def fetch_keyword_metrics(keyword_id: str, ad_group_id: str, platform: str, start_date: str = None, end_date: str = None) -> KeywordMetrics:
+    """Fetch metrics for a specific keyword within an ad group.
+    
     Args:
         keyword_id: ID of the keyword.
+        ad_group_id: ID of the parent ad group.
         platform: Platform name.
+        start_date: Report start date (YYYY-MM-DD). Defaults to 30 days before end_date.
+        end_date: Report end date (YYYY-MM-DD). Defaults to today.
     """
     try:
-        logger.info(f"Fetching metrics for keyword '{keyword_id}' on platform '{platform}'")
-        return registry.fetch_keyword_metrics(keyword_id=keyword_id, platform=platform)
+        return registry.fetch_keyword_metrics(keyword_id=keyword_id, ad_group_id=ad_group_id, platform=platform, start_date=start_date, end_date=end_date)
     except Exception as e:
         logger.error(f"Error fetching keyword metrics: {e}")
         raise

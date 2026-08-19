@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 import os
 import logging
 from typing import List, Dict, Any
@@ -263,7 +264,12 @@ class GoogleAdsConnector(BaseMarketingConnector):
     # Ad Group metrics
     # ---------------------------------------------------------------
  
-    def fetch_ad_group_metrics(self, ad_group_id: str):
+    def fetch_ad_group_metrics(self, ad_group_id: str, start_date: str = None, end_date: str = None):
+        if not end_date:
+            end_date = (date.today() - timedelta(days=1)).isoformat()
+        if not start_date:
+            start_date = (date.today() - timedelta(days=30)).isoformat()
+            
         query = f"""
             SELECT
                 metrics.impressions,
@@ -273,7 +279,7 @@ class GoogleAdsConnector(BaseMarketingConnector):
                 metrics.conversions_value
             FROM ad_group
             WHERE ad_group.id = {int(ad_group_id)}
-                AND segments.date DURING LAST_30_DAYS
+                AND segments.date BETWEEN '{start_date}' AND '{end_date}'
         """
         rows = self._execute_query(query)
  
@@ -305,7 +311,12 @@ class GoogleAdsConnector(BaseMarketingConnector):
     # Ad metrics
     # ---------------------------------------------------------------
  
-    def fetch_ad_metrics(self, ad_id: str):
+    def fetch_ad_metrics(self, ad_id: str, start_date: str = None, end_date: str = None):
+        if not end_date:
+            end_date = (date.today() - timedelta(days=1)).isoformat()
+        if not start_date:
+            start_date = (date.today() - timedelta(days=30)).isoformat()
+            
         query = f"""
             SELECT
                 metrics.impressions,
@@ -315,7 +326,7 @@ class GoogleAdsConnector(BaseMarketingConnector):
                 metrics.conversions_value
             FROM ad_group_ad
             WHERE ad_group_ad.ad.id = {int(ad_id)}
-                AND segments.date DURING LAST_30_DAYS
+                AND segments.date BETWEEN '{start_date}' AND '{end_date}'
         """
         rows = self._execute_query(query)
  
@@ -380,7 +391,12 @@ class GoogleAdsConnector(BaseMarketingConnector):
     # Keyword metrics
     # ---------------------------------------------------------------
  
-    def fetch_keyword_metrics(self, keyword_id: str):
+    def fetch_keyword_metrics(self, keyword_id: str, ad_group_id: str, start_date: str = None, end_date: str = None):
+        if not end_date:
+            end_date = (date.today() - timedelta(days=1)).isoformat()
+        if not start_date:
+            start_date = (date.today() - timedelta(days=30)).isoformat() 
+ 
         query = f"""
             SELECT
                 metrics.impressions,
@@ -390,7 +406,8 @@ class GoogleAdsConnector(BaseMarketingConnector):
                 metrics.conversions_value
             FROM keyword_view
             WHERE ad_group_criterion.criterion_id = {int(keyword_id)}
-                AND segments.date DURING LAST_30_DAYS
+                AND ad_group.id = {int(ad_group_id)}
+                AND segments.date BETWEEN '{start_date}' AND '{end_date}'
         """
         rows = self._execute_query(query)
  
