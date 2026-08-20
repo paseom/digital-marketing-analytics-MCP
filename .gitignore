@@ -5,6 +5,9 @@ generate_refresh_token.py
 .env
 .env.*
 
+# Meta credentials
+meta.yaml
+
 # Python
 .venv/
 __pycache__/
