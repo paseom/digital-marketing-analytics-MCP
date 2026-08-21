@@ -31,7 +31,7 @@ class MetaAdsConnector(BaseMarketingConnector):
     ):
         self.ad_account_id = (
             ad_account_id
-            or os.environ.get("META_AD_ACCOUNTS", "")
+            or os.environ.get("META_ADS_ACCOUNTS", "")
         ).strip()
 
         self.access_token = (
@@ -40,7 +40,7 @@ class MetaAdsConnector(BaseMarketingConnector):
         ).strip()
 
         if not self.ad_account_id:
-            raise ValueError("META_AD_ACCOUNTS is not set")
+            raise ValueError("META_ADS_ACCOUNTS is not set")
 
         if not self.ad_account_id.startswith("act_"):
             self.ad_account_id = f"act_{self.ad_account_id}"
@@ -53,6 +53,9 @@ class MetaAdsConnector(BaseMarketingConnector):
             if account_label
             else "meta_ads"
         )
+
+    def get_platform_name(self) -> str:
+        return self._platform_name
 
     # ---------------------------------------------------------------
     # Internal helper
