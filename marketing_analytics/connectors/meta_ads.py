@@ -23,24 +23,36 @@ GRAPH_API_BASE = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 class MetaAdsConnector(BaseMarketingConnector):
     """Real connector for Meta Ads (Facebook/Instagram) using the Graph Marketing API directly."""
 
-    def __init__(self, ad_account_id: str = None, access_token: str = None, account_label: str = None):
-        self.ad_account_id = (ad_account_id or "").strip()
-        self.access_token = access_token or os.environ.get("META_ACCESS_TOKEN")
+    def __init__(
+        self,
+        ad_account_id: str = None,
+        access_token: str = None,
+        account_label: str = None
+    ):
+        self.ad_account_id = (
+            ad_account_id
+            or os.environ.get("META_AD_ACCOUNTS", "")
+        ).strip()
+
+        self.access_token = (
+            access_token
+            or os.environ.get("META_ACCESS_TOKEN", "")
+        ).strip()
 
         if not self.ad_account_id:
-            raise ValueError("META_AD_ACCOUNT_ID is not set")
+            raise ValueError("META_AD_ACCOUNTS is not set")
 
-        # Meta Ads API menggunakan prefix "act_" pada Ad Account ID
         if not self.ad_account_id.startswith("act_"):
             self.ad_account_id = f"act_{self.ad_account_id}"
 
         if not self.access_token:
             raise ValueError("META_ACCESS_TOKEN is not set")
 
-        self._platform_name = f"meta_ads_{account_label}" if account_label else "meta_ads"
-
-    def get_platform_name(self) -> str:
-        return self._platform_name
+        self._platform_name = (
+            f"meta_ads_{account_label}"
+            if account_label
+            else "meta_ads"
+        )
 
     # ---------------------------------------------------------------
     # Internal helper
