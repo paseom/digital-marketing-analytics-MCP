@@ -4,6 +4,16 @@ import os
 from marketing_analytics.connectors.registry import registry
 from marketing_analytics.connectors.google_ads import GoogleAdsConnector
 from marketing_analytics.connectors.meta_ads import MetaAdsConnector
+
+import marketing_analytics.connectors.meta_ads as meta_module
+
+print("=== META DEBUG ===")
+print("FILE:", meta_module.__file__)
+print("ABSTRACT:", MetaAdsConnector.__abstractmethods__)
+print("HAS METHOD:", hasattr(MetaAdsConnector, "get_platform_name"))
+print("METHOD:", MetaAdsConnector.get_platform_name)
+print("==================")
+
 from marketing_analytics.connectors.tiktok_ads import TikTokAdsConnector
 from marketing_analytics.connectors.ga4 import GA4Connector
 
