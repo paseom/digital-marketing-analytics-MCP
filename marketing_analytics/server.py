@@ -235,6 +235,21 @@ def fetch_keyword_metrics(keyword_id: str, ad_group_id: str, platform: str, star
         raise
 
 @mcp.tool()
+def fetch_daily_trends(platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None):
+    """Fetch daily trend metrics (spend, impressions, clicks, ctr, cpc) for a platform."""
+    return registry.get_connector(platform).get_daily_trends(specific_date, all_time, campaign_id)
+
+@mcp.tool()
+def fetch_audience_demographics(platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None):
+    """Fetch audience breakdown by age and gender. Meta Ads only."""
+    return registry.get_connector(platform).get_audience_demographics(specific_date, all_time, campaign_id)
+
+@mcp.tool()
+def fetch_targeted_interests(platform: str, adset_id: str):
+    """Fetch targeted interests for an ad set. Meta Ads only."""
+    return registry.get_connector(platform).get_targeted_interests(adset_id)
+
+@mcp.tool()
 def generate_report(platforms: Optional[List[str]] = None, start_date: str = "2026-07-01", end_date: str = "2026-07-10") -> MarketingReport:
     """
     Generate an aggregated performance report across multiple marketing platforms.

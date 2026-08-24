@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 from datetime import date, timedelta
@@ -203,7 +204,84 @@ class MetaAdsConnector(BaseMarketingConnector):
             cpc=round(cpc, 2),
             roas=0.0,
         )
+        
+    # ---------------------------------------------------------------
+    # Date range helper — support: 1 tanggal spesifik, last 30 days, atau all time
+    # ---------------------------------------------------------------
+    def _resolve_date_range(self, specific_date: str = None, all_time: bool = False):
+        """
+        specific_date: 'YYYY-MM-DD' -> insight untuk 1 hari itu saja
+        all_time=True -> pakai date_preset='maximum' (ditentukan Meta, biasanya
+                          dibatasi retensi data akun, umumnya sekitar 37 bulan)
+        default (keduanya kosong) -> last 30 days (sampai kemarin, data hari ini
+                          biasanya belum final di Meta)
 
+        Return: (mode, value)
+          mode "range" -> value = (date_start, date_end) untuk dipakai di time_range
+          mode "preset" -> value = date_preset string untuk dipakai di date_preset
+        """
+        if specific_date:
+            return "range", (specific_date, specific_date)
+        if all_time:
+            return "preset", "maximum"
+        end = date.today() - timedelta(days=1)
+        start = end - timedelta(days=29)
+        return "range", (start.isoformat(), end.isoformat())
+    
+    def _build_time_params(self, specific_date: str = None, all_time: bool = False) -> dict:
+        mode, value = self._resolve_date_range(specific_date, all_time)
+        if mode == "preset":
+            return {"date_preset": value}
+        date_start, date_end = value
+        return {"time_range": json.dumps({"since": date_start, "until": date_end})}
+
+    # ---------------------------------------------------------------
+    # Daily Trends
+    # ---------------------------------------------------------------
+    def get_daily_trends(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[Dict[str, Any]]:
+        params = {
+            **self._build_time_params(specific_date, all_time),
+            "time_increment": 1,
+            "fields": "date_start,spend,impressions,clicks,ctr,cpc,cpm",
+            "level": "campaign" if campaign_id else "account",
+        }
+        if campaign_id:
+            params["filtering"] = json.dumps([
+                {"field": "campaign.id", "operator": "EQUAL", "value": campaign_id}
+            ])
+        data = self._get(f"{self.ad_account_id}/insights", params)
+        return data.get("data", [])
+
+    # ---------------------------------------------------------------
+    # Audience — Demografi (age, gender)
+    # ---------------------------------------------------------------
+    def get_audience_demographics(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[Dict[str, Any]]:
+        params = {
+            **self._build_time_params(specific_date, all_time),
+            "fields": "spend,impressions,clicks,ctr,cpc",
+            "breakdowns": "age,gender",
+            "level": "campaign" if campaign_id else "account",
+        }
+        if campaign_id:
+            params["filtering"] = json.dumps([
+                {"field": "campaign.id", "operator": "EQUAL", "value": campaign_id}
+            ])
+        data = self._get(f"{self.ad_account_id}/insights", params)
+        return data.get("data", [])
+
+    # ---------------------------------------------------------------
+    # Audience — Interest 
+    # ---------------------------------------------------------------
+    def get_targeted_interests(self, adset_id: str) -> List[Dict[str, Any]]:
+        """
+        Interest bukan dimensi hasil (siapa yang klik), tapi siapa yang DITARGET.
+        Jadi diambil dari targeting spec ad set, dipisah dari metrics performance.
+        """
+        data = self._get(adset_id, {"fields": "targeting"})
+        targeting = data.get("targeting", {})
+        interests = targeting.get("flexible_spec", []) or [targeting.get("interests", [])]
+        return interests
+    
     # ---------------------------------------------------------------
     # Static metadata
     # ---------------------------------------------------------------

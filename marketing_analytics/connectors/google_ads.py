@@ -550,6 +550,7 @@ class GoogleAdsConnector(BaseMarketingConnector):
             cpc=round(cpc, 2),
             roas=round(roas, 2),
         )
+        
     # ---------------------------------------------------------------
     # Aggregated report across a date range
     # ---------------------------------------------------------------
@@ -597,6 +598,54 @@ class GoogleAdsConnector(BaseMarketingConnector):
             roas=round(roas, 2),
         )
     
+    # ---------------------------------------------------------------
+    # Date range helper — konsisten dengan MetaAdsConnector
+    # ---------------------------------------------------------------
+    def _resolve_date_range(self, specific_date: str = None, all_time: bool = False):
+        if specific_date:
+            return specific_date, specific_date
+        if all_time:
+            # Google Ads gak punya "ALL_TIME" literal utk custom query builder,
+            # jadi pakai batas jauh ke belakang (akun baru biasanya gak sejauh ini)
+            return "2000-01-01", (date.today() - timedelta(days=1)).isoformat()
+        end = date.today() - timedelta(days=1)
+        start = end - timedelta(days=29)
+        return start.isoformat(), end.isoformat()
+    
+    # ---------------------------------------------------------------
+    # Daily Trends
+    # ---------------------------------------------------------------
+    def get_daily_trends(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[Dict[str, Any]]:
+        date_start, date_end = self._resolve_date_range(specific_date, all_time)
+
+        query = f"""
+            SELECT
+                segments.date,
+                metrics.cost_micros,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.ctr,
+                metrics.average_cpc
+            FROM campaign
+            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}'
+                AND campaign.status != 'REMOVED'
+                {f"AND campaign.id = {int(campaign_id)}" if campaign_id else ""}
+            ORDER BY segments.date
+        """
+        rows = self._execute_query(query)
+
+        return [
+            {
+                "date": str(row.segments.date),
+                "spend": round(row.metrics.cost_micros / 1_000_000, 2),
+                "impressions": row.metrics.impressions,
+                "clicks": row.metrics.clicks,
+                "ctr": round(row.metrics.ctr, 4),
+                "cpc": round(row.metrics.average_cpc / 1_000_000, 2),
+            }
+            for row in rows
+        ]
+        
     # ---------------------------------------------------------------
     # Static metadata (unchanged, not a live API call)
     # ---------------------------------------------------------------
