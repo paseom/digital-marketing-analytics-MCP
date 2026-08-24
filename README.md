@@ -14,7 +14,7 @@ A **Model Context Protocol (MCP)** server built in Python using FastMCP, connect
 | Platform | Status |
 |---|---|
 | Google Ads | ✅ Real |
-| Meta Ads | ⚠️ Placeholder (dummy) |
+| Meta Ads | ✅ Real |
 | TikTok Ads | ⚠️ Placeholder (dummy) |
 | GA4 | ⚠️ Placeholder (dummy) |
 
@@ -59,7 +59,7 @@ Setiap connector platform wajib implementasi:
 │       ├── base.py               
 │       ├── registry.py           
 │       ├── google_ads.py          
-│       ├── meta_ads.py              # ⚠️ Dummy
+│       ├── meta_ads.py            
 │       ├── tiktok_ads.py             # ⚠️ Dummy
 │       └── ga4.py                     # ⚠️ Dummy
 ├── api/
@@ -115,7 +115,7 @@ pip install -e ".[dev]"
 
 ### 2. Isi credential
 
-Copy `google-ads.yaml.example` → `google-ads.yaml`, isi credential Google Ads asli. **Jangan commit file ini** (sudah di-`.gitignore`).
+Copy `google-ads.yaml.example` → `google-ads.yaml`, isi credential Google Ads asli. **Jangan commit file ini**.
 
 ### 3. Jalankan test
 
