@@ -217,6 +217,18 @@ if REQUIRE_AUTH:
 st.title("📊 Marketing Analytics Chat")
 st.caption("Ask about campaign — real-time data from marketing platforms.")
 
+def _pretty_platform(platform_key: str) -> str:
+    """meta_ads_msig -> Meta Ads, google_ads_hakuhodo -> Google Ads, dst."""
+    if platform_key.startswith("google_ads"):
+        return "Google Ads"
+    if platform_key.startswith("meta_ads"):
+        return "Meta Ads"
+    if platform_key.startswith("tiktok_ads"):
+        return "TikTok Ads"
+    if platform_key.startswith("ga4"):
+        return "GA4"
+    return platform_key
+
 with st.sidebar:
     if REQUIRE_AUTH and st.user.is_logged_in:
         st.write(f"👤 {st.user.email}")
@@ -227,19 +239,20 @@ with st.sidebar:
     st.subheader("Active Ad Account")
     accounts = list_available_accounts()
     if accounts:
-        account_labels = ["🌐 Semua akun"] + [name for name, _ in accounts]
-        selected_label = st.selectbox("Pilih akun:", account_labels, label_visibility="collapsed")
-        if selected_label == "🌐 Semua akun":
-            st.session_state.selected_platform = None
-            st.session_state.selected_account_name = None
-        else:
-            matched_platform = next(p for name, p in accounts if name == selected_label)
-            st.session_state.selected_platform = matched_platform
-            st.session_state.selected_account_name = selected_label
-    else:
-        st.session_state.selected_platform = None
-        st.session_state.selected_account_name = None
-        st.caption("⚠️ Gak bisa ambil daftar akun dari MCP server — cek koneksi.")
+        option_map = {"🌐 Semua akun": (None, None)}
+        for name, platform in accounts:
+            label = f"{name} ({_pretty_platform(platform)})"
+            option_map[label] = (name, platform)
+
+        selected_label = st.selectbox("Pilih akun:", list(option_map.keys()), label_visibility="collapsed")
+        selected_name, selected_platform = option_map[selected_label]
+
+        if st.session_state.get("selected_platform") != selected_platform:
+            st.session_state.messages = []
+            st.session_state.question_count = 0
+
+        st.session_state.selected_platform = selected_platform
+        st.session_state.selected_account_name = selected_name
     
 if not GEMINI_API_KEY or not MCP_SERVER_URL:
     st.error("GEMINI_API_KEY atau MCP_SERVER_URL belum diset di Secrets. Cek Settings > Secrets.")
