@@ -306,7 +306,7 @@ class MetaAdsConnector(BaseMarketingConnector):
             for row in gender_data.get("data", [])
         ]
         # note: "gaji"/income TIDAK tersedia sebagai breakdown — Meta gak expose ini
-        return AudienceDemographics(platform=self.get_platform_name(), by_age=by_age, by_gender=by_gender)
+        return AudienceDemographics(platform=self.get_platform_name(), by_age=by_age, by_gender=by_gender, by_income=[])
 
     # ---------------------------------------------------------------
     # Audience — Interest

@@ -171,10 +171,14 @@ class DemographicRow(BaseModel):
     cpc: float
 
 class AudienceDemographics(BaseModel):
-    """Audience breakdown by age and gender, as two separate (non-crossed) lists."""
+    """Audience breakdown by age, gender, and (Google Ads Display only) income range."""
     platform: str = Field(..., description="The platform")
     by_age: List[DemographicRow] = Field(default_factory=list)
     by_gender: List[DemographicRow] = Field(default_factory=list)
+    by_income: List[DemographicRow] = Field(
+        default_factory=list,
+        description="Household income bracket breakdown. Only populated for Google Ads Display Network campaigns — always empty for Search campaigns and for Meta Ads (not supported by that platform)."
+    )
 
 class TargetedInterest(BaseModel):
     """A single targeted interest/category on an ad group or ad set."""

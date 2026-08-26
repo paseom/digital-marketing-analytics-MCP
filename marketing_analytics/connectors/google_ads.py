@@ -655,54 +655,51 @@ class GoogleAdsConnector(BaseMarketingConnector):
         age_query = f"""
             SELECT
                 ad_group_criterion.age_range.type,
-                metrics.impressions,
-                metrics.clicks,
-                metrics.cost_micros,
-                metrics.ctr,
-                metrics.average_cpc
+                metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.ctr, metrics.average_cpc
             FROM age_range_view
-            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}'
-                {campaign_filter}
+            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}' {campaign_filter}
         """
         gender_query = f"""
             SELECT
                 ad_group_criterion.gender.type,
-                metrics.impressions,
-                metrics.clicks,
-                metrics.cost_micros,
-                metrics.ctr,
-                metrics.average_cpc
+                metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.ctr, metrics.average_cpc
             FROM gender_view
-            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}'
-                {campaign_filter}
+            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}' {campaign_filter}
+        """
+        # Household income bracket — HANYA populated untuk Display Network,
+        # campaign Search biasanya balikin kosong/UNKNOWN
+        income_query = f"""
+            SELECT
+                ad_group_criterion.income_range.type,
+                metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.ctr, metrics.average_cpc
+            FROM income_range_view
+            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}' {campaign_filter}
         """
 
         age_rows = self._execute_query(age_query)
         gender_rows = self._execute_query(gender_query)
+        income_rows = self._execute_query(income_query)
 
-        by_age = [
-            DemographicRow(
-                segment=row.ad_group_criterion.age_range.type_.name,
+        def _to_row(row, segment_value):
+            return DemographicRow(
+                segment=segment_value,
                 spend=round(row.metrics.cost_micros / 1_000_000, 2),
                 impressions=row.metrics.impressions,
                 clicks=row.metrics.clicks,
                 ctr=round(row.metrics.ctr, 4),
                 cpc=round(row.metrics.average_cpc / 1_000_000, 2),
             )
-            for row in age_rows
-        ]
-        by_gender = [
-            DemographicRow(
-                segment=row.ad_group_criterion.gender.type_.name,
-                spend=round(row.metrics.cost_micros / 1_000_000, 2),
-                impressions=row.metrics.impressions,
-                clicks=row.metrics.clicks,
-                ctr=round(row.metrics.ctr, 4),
-                cpc=round(row.metrics.average_cpc / 1_000_000, 2),
-            )
-            for row in gender_rows
-        ]
-        return AudienceDemographics(platform=self.get_platform_name(), by_age=by_age, by_gender=by_gender)
+
+        by_age = [_to_row(r, r.ad_group_criterion.age_range.type_.name) for r in age_rows]
+        by_gender = [_to_row(r, r.ad_group_criterion.gender.type_.name) for r in gender_rows]
+        by_income = [_to_row(r, r.ad_group_criterion.income_range.type_.name) for r in income_rows]
+
+        return AudienceDemographics(
+            platform=self.get_platform_name(),
+            by_age=by_age,
+            by_gender=by_gender,
+            by_income=by_income,
+        )
 
     # ---------------------------------------------------------------
     # Audience — Interests
