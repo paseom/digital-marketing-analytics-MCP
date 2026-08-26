@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 from marketing_analytics.connectors.base import BaseMarketingConnector
-from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, PlatformReport, MarketingReport
+from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, KeywordVolume, KeywordVolumeResult, PlatformReport, MarketingReport
 
 class ConnectorRegistry:
     """Manages registered advertising platform connectors and coordinates multi-platform operations."""
@@ -90,6 +90,17 @@ class ConnectorRegistry:
     def fetch_targeted_interests(self, platform: str, ad_group_or_adset_id: str):
         """Fetch targeted interests for an ad group / ad set on a specific platform."""
         return self.get_connector(platform).get_targeted_interests(ad_group_or_adset_id)
+    
+    def fetch_keyword_volume(self, platform: str, seed_keywords: List[str], language_id: str = "1000", location_ids: List[str] = None) -> KeywordVolumeResult:
+        connector = self.get_connector(platform)
+        if not hasattr(connector, "get_keyword_volume"):
+            raise ValueError(f"Platform '{platform}' does not support keyword volume lookup (Google Ads only).")
+        raw_results = connector.get_keyword_volume(seed_keywords, language_id, location_ids)
+        return KeywordVolumeResult(
+            platform=platform,
+            seed_keywords=seed_keywords,
+            results=[KeywordVolume(**r) for r in raw_results],
+        )
     
     def generate_report(self, platforms: List[str], start_date: str, end_date: str) -> MarketingReport:
         """Generate an aggregated MarketingReport across selected platforms."""

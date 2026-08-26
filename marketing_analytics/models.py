@@ -187,3 +187,23 @@ class TargetedInterest(BaseModel):
     name: Optional[str] = Field(None, description="Human-readable interest name/category, if resolved")
     raw: Optional[str] = Field(None, description="Raw identifier/category string as returned by the platform API, for cases where a human-readable name isn't resolved")
     
+class KeywordVolume(BaseModel):
+    """Search volume & competition data untuk sebuah keyword, dari Keyword Planner —
+    ini estimasi search volume, BUKAN performa aktual dari campaign yang jalan."""
+    keyword_text: str = Field(..., description="The keyword text")
+    avg_monthly_searches: Optional[int] = Field(None, description="Average monthly search volume (approximate, Google-provided range midpoint)")
+    competition: str = Field(..., description="Competition level: LOW, MEDIUM, HIGH, or UNKNOWN")
+    competition_index: Optional[int] = Field(None, description="Competition index 0-100, if available")
+    low_top_of_page_bid: Optional[float] = Field(None, description="Estimated low-end CPC bid for top of page placement")
+    high_top_of_page_bid: Optional[float] = Field(None, description="Estimated high-end CPC bid for top of page placement")
+
+class KeywordVolumeResult(BaseModel):
+    """Hasil pencarian volume untuk satu atau lebih keyword seed."""
+    platform: str = Field(..., description="The platform (google_ads only — Meta doesn't have keyword search volume)")
+    seed_keywords: List[str] = Field(..., description="The keyword(s) or URL used as seed for generating ideas")
+    results: List[KeywordVolume] = Field(..., description="Keyword ideas with volume/competition data")
+    disclaimer: str = Field(
+        "Data dari Google Ads Keyword Planner — avg_monthly_searches adalah estimasi/range "
+        "dari Google, bukan angka pasti, dan bisa berbeda dari performa aktual campaign.",
+        description="Caveat about data precision"
+    )

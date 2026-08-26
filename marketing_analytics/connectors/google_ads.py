@@ -739,6 +739,45 @@ class GoogleAdsConnector(BaseMarketingConnector):
         ]
         
     # ---------------------------------------------------------------
+    # Keyword Volume
+    # ---------------------------------------------------------------
+    def get_keyword_volume(self, seed_keywords: List[str], language_id: str = "1000", location_ids: List[str] = None) -> List[Dict[str, Any]]:
+        """
+        language_id default 1000 = English. Untuk Bahasa Indonesia, cek constant
+        yang sesuai (biasanya 1017 untuk Indonesian, TAPI harus dikonfirmasi lewat
+        GoogleAdsService languageConstants sebelum dipakai production).
+        location_ids default None -> Indonesia (geoTargetConstant 2360), sesuaikan
+        kalau target market beda.
+        """
+        if location_ids is None:
+            location_ids = ["2360"]  # Indonesia
+
+        keyword_plan_idea_service = self.client.get_service("KeywordPlanIdeaService")
+        keyword_competition_level_enum = self.client.enums.KeywordPlanCompetitionLevelEnum
+
+        request = self.client.get_type("GenerateKeywordIdeasRequest")
+        request.customer_id = self.customer_id
+        request.language = f"languageConstants/{language_id}"
+        request.geo_target_constants = [f"geoTargetConstants/{loc}" for loc in location_ids]
+        request.keyword_plan_network = self.client.enums.KeywordPlanNetworkEnum.GOOGLE_SEARCH
+        request.keyword_seed.keywords.extend(seed_keywords)
+
+        response = keyword_plan_idea_service.generate_keyword_ideas(request=request)
+
+        results = []
+        for idea in response:
+            metrics = idea.keyword_idea_metrics
+            results.append({
+                "keyword_text": idea.text,
+                "avg_monthly_searches": metrics.avg_monthly_searches if metrics.avg_monthly_searches else None,
+                "competition": metrics.competition.name if metrics.competition else "UNKNOWN",
+                "competition_index": metrics.competition_index if metrics.competition_index else None,
+                "low_top_of_page_bid": round(metrics.low_top_of_page_bid_micros / 1_000_000, 2) if metrics.low_top_of_page_bid_micros else None,
+                "high_top_of_page_bid": round(metrics.high_top_of_page_bid_micros / 1_000_000, 2) if metrics.high_top_of_page_bid_micros else None,
+            })
+        return results    
+    
+    # ---------------------------------------------------------------
     # Static metadata (unchanged, not a live API call)
     # ---------------------------------------------------------------
 

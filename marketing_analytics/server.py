@@ -10,7 +10,7 @@ from marketing_analytics.models import (
     AccountInfo, Campaign, CampaignMetrics, MarketingReport,
     AdGroup, Ad, AdGroupMetrics, AdMetrics,
     Keyword, KeywordMetrics, AssetGroup, Asset, AssetGroupMetrics,
-    DailyTrend, AudienceDemographics, TargetedInterest,
+    DailyTrend, AudienceDemographics, TargetedInterest, KeywordVolumeResult,
 )
 
 # Configure simple logging to stderr (stdio transport safe)
@@ -283,6 +283,28 @@ def fetch_targeted_interests(platform: str, ad_group_or_adset_id: str) -> List[T
         logger.error(f"Error fetching targeted interests: {e}")
         raise
 
+@mcp.tool()
+def fetch_keyword_volume(platform: str, seed_keywords: List[str], language_id: str = "1000", location_ids: Optional[List[str]] = None) -> KeywordVolumeResult:
+    """
+    Fetch search volume, competition level, and estimated CPC bid range for keyword
+    ideas, based on one or more seed keywords. GOOGLE ADS ONLY — Meta Ads doesn't
+    have a keyword search volume API since it's not a search platform.
+    This is Keyword Planner data (estimated search demand), NOT performance data
+    from a running campaign — use fetch_keyword_metrics for that instead.
+
+    Args:
+        platform: Must be a google_ads platform key.
+        seed_keywords: List of seed keyword strings to generate ideas from.
+        language_id: Google Ads language constant ID (default "1000" = English).
+        location_ids: List of Google Ads geo target constant IDs (default Indonesia).
+    """
+    try:
+        logger.info(f"Fetching keyword volume (platform={platform}, seeds={seed_keywords})")
+        return registry.fetch_keyword_volume(platform=platform, seed_keywords=seed_keywords, language_id=language_id, location_ids=location_ids)
+    except Exception as e:
+        logger.error(f"Error fetching keyword volume: {e}")
+        raise
+    
 @mcp.tool()
 def generate_report(platforms: Optional[List[str]] = None, start_date: str = "2026-07-01", end_date: str = "2026-07-10") -> MarketingReport:
     """
