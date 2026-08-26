@@ -186,3 +186,23 @@ class TargetedInterest(BaseModel):
     criterion_id: Optional[str] = Field(None, description="ID of the targeting criterion, if available")
     name: Optional[str] = Field(None, description="Human-readable interest name/category, if resolved")
     raw: Optional[str] = Field(None, description="Raw identifier/category string as returned by the platform API, for cases where a human-readable name isn't resolved")
+    
+class ForecastPoint(BaseModel):
+    """Satu titik hasil proyeksi untuk tanggal tertentu di masa depan."""
+    date: str = Field(..., description="Predicted date (YYYY-MM-DD)")
+    spend: float = Field(..., description="Predicted spend")
+    impressions: int = Field(..., description="Predicted impressions")
+    clicks: int = Field(..., description="Predicted clicks")
+
+class ForecastResult(BaseModel):
+    """Hasil forecast berbasis trend historis (regresi linear sederhana)."""
+    platform: str = Field(..., description="The platform")
+    campaign_id: Optional[str] = Field(None, description="Campaign ID if scoped to one campaign")
+    method: str = Field("linear_regression", description="Forecasting method used")
+    historical_days_used: int = Field(..., description="Number of historical daily data points used to build the forecast")
+    forecast: List[ForecastPoint] = Field(..., description="Predicted daily values for the requested future period")
+    disclaimer: str = Field(
+        "Ini proyeksi statistik dari trend historis (regresi linear), bukan forecast resmi dari platform. "
+        "Akurasi terbatas untuk campaign dengan pola musiman, promo, atau perubahan budget mendadak.",
+        description="Caveat to show alongside forecast results"
+    )

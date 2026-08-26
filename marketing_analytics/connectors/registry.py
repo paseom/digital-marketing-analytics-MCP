@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional
 from marketing_analytics.connectors.base import BaseMarketingConnector
 from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, PlatformReport, MarketingReport
+from marketing_analytics.forecasting import forecast_from_daily_trends
+from marketing_analytics.models import ForecastResult
 
 class ConnectorRegistry:
     """Manages registered advertising platform connectors and coordinates multi-platform operations."""
@@ -131,6 +133,20 @@ class ConnectorRegistry:
             average_ctr=round(avg_ctr, 4),
             average_cpc=round(avg_cpc, 2),
             average_roas=round(avg_roas, 2)
+        )
+
+    def fetch_forecast(self, platform: str, days_ahead: int = 7, lookback_days: int = 30, campaign_id: str = None) -> ForecastResult:
+        """Fetch historical daily trends, then project forward using linear regression."""
+        connector = self.get_connector(platform)
+        # Pakai all_time=False (default 30 hari) sebagai basis histori;
+        # kalau butuh lookback lebih panjang dari 30 hari, connector perlu
+        # extend _resolve_date_range buat terima custom lookback_days.
+        history = connector.get_daily_trends(campaign_id=campaign_id)
+        return forecast_from_daily_trends(
+            history=history,
+            days_ahead=days_ahead,
+            platform=platform,
+            campaign_id=campaign_id,
         )
 
 # Global singleton instance of registry for easier imports inside server
