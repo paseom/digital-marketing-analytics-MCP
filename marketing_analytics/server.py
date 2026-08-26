@@ -10,7 +10,7 @@ from marketing_analytics.models import (
     AccountInfo, Campaign, CampaignMetrics, MarketingReport,
     AdGroup, Ad, AdGroupMetrics, AdMetrics,
     Keyword, KeywordMetrics, AssetGroup, Asset, AssetGroupMetrics,
-    DailyTrend, AudienceDemographics, TargetedInterest, ForecastResult,
+    DailyTrend, AudienceDemographics, TargetedInterest,
 )
 
 # Configure simple logging to stderr (stdio transport safe)
@@ -299,26 +299,6 @@ def generate_report(platforms: Optional[List[str]] = None, start_date: str = "20
         return registry.generate_report(platforms=platforms_list, start_date=start_date, end_date=end_date)
     except Exception as e:
         logger.error(f"Error generating report: {e}")
-        raise
-
-@mcp.tool()
-def fetch_forecast(platform: str, days_ahead: int = 7, campaign_id: str = None) -> ForecastResult:
-    """
-    Forecast future spend, impressions, and clicks based on historical daily
-    trend data, using simple linear regression. This is a STATISTICAL PROJECTION
-    from past trends, NOT an official platform forecast — accuracy is limited
-    for campaigns with seasonality, promos, or sudden budget changes.
-
-    Args:
-        platform: Platform name (google_ads, meta_ads).
-        days_ahead: Number of future days to forecast (default 7).
-        campaign_id: Optional campaign ID to scope the forecast to.
-    """
-    try:
-        logger.info(f"Forecasting (platform={platform}, days_ahead={days_ahead}, campaign_id={campaign_id})")
-        return registry.fetch_forecast(platform=platform, days_ahead=days_ahead, campaign_id=campaign_id)
-    except Exception as e:
-        logger.error(f"Error generating forecast: {e}")
         raise
     
 # ==========================================
