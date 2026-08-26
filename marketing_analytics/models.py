@@ -150,3 +150,35 @@ class KeywordMetrics(BaseModel):
     ctr: float
     cpc: float
     roas: float
+    
+class DailyTrend(BaseModel):
+    """Satu titik data harian — dipakai untuk trend chart."""
+    platform: str = Field(..., description="The platform")
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    spend: float = Field(..., description="Spend for this day in account currency")
+    impressions: int = Field(..., description="Impressions for this day")
+    clicks: int = Field(..., description="Clicks for this day")
+    ctr: float = Field(..., description="Click-Through Rate for this day")
+    cpc: float = Field(..., description="Cost Per Click for this day")
+
+class DemographicRow(BaseModel):
+    """Satu baris breakdown demografi — untuk satu dimensi (age ATAU gender, tidak disilangkan)."""
+    segment: str = Field(..., description="The demographic segment label, e.g. '25-34' or 'FEMALE'")
+    spend: float
+    impressions: int
+    clicks: int
+    ctr: float
+    cpc: float
+
+class AudienceDemographics(BaseModel):
+    """Audience breakdown by age and gender, as two separate (non-crossed) lists."""
+    platform: str = Field(..., description="The platform")
+    by_age: List[DemographicRow] = Field(default_factory=list)
+    by_gender: List[DemographicRow] = Field(default_factory=list)
+
+class TargetedInterest(BaseModel):
+    """A single targeted interest/category on an ad group or ad set."""
+    platform: str = Field(..., description="The platform")
+    criterion_id: Optional[str] = Field(None, description="ID of the targeting criterion, if available")
+    name: Optional[str] = Field(None, description="Human-readable interest name/category, if resolved")
+    raw: Optional[str] = Field(None, description="Raw identifier/category string as returned by the platform API, for cases where a human-readable name isn't resolved")

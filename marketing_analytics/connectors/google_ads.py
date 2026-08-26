@@ -7,7 +7,7 @@ from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
 
 from marketing_analytics.connectors.base import BaseMarketingConnector
-from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, PlatformReport
+from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, PlatformReport, DailyTrend, DemographicRow, AudienceDemographics, TargetedInterest
 
 try:
     from dotenv import load_dotenv
@@ -605,18 +605,17 @@ class GoogleAdsConnector(BaseMarketingConnector):
         if specific_date:
             return specific_date, specific_date
         if all_time:
-            # Google Ads gak punya "ALL_TIME" literal utk custom query builder,
-            # jadi pakai batas jauh ke belakang (akun baru biasanya gak sejauh ini)
             return "2000-01-01", (date.today() - timedelta(days=1)).isoformat()
         end = date.today() - timedelta(days=1)
         start = end - timedelta(days=29)
         return start.isoformat(), end.isoformat()
     
-    # ---------------------------------------------------------------
+        # ---------------------------------------------------------------
     # Daily Trends
     # ---------------------------------------------------------------
-    def get_daily_trends(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[Dict[str, Any]]:
+    def get_daily_trends(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[DailyTrend]:
         date_start, date_end = self._resolve_date_range(specific_date, all_time)
+        campaign_filter = f"AND campaign.id = {int(campaign_id)}" if campaign_id else ""
 
         query = f"""
             SELECT
@@ -629,20 +628,103 @@ class GoogleAdsConnector(BaseMarketingConnector):
             FROM campaign
             WHERE segments.date BETWEEN '{date_start}' AND '{date_end}'
                 AND campaign.status != 'REMOVED'
-                {f"AND campaign.id = {int(campaign_id)}" if campaign_id else ""}
+                {campaign_filter}
             ORDER BY segments.date
         """
         rows = self._execute_query(query)
-
         return [
-            {
-                "date": str(row.segments.date),
-                "spend": round(row.metrics.cost_micros / 1_000_000, 2),
-                "impressions": row.metrics.impressions,
-                "clicks": row.metrics.clicks,
-                "ctr": round(row.metrics.ctr, 4),
-                "cpc": round(row.metrics.average_cpc / 1_000_000, 2),
-            }
+            DailyTrend(
+                platform=self.get_platform_name(),
+                date=str(row.segments.date),
+                spend=round(row.metrics.cost_micros / 1_000_000, 2),
+                impressions=row.metrics.impressions,
+                clicks=row.metrics.clicks,
+                ctr=round(row.metrics.ctr, 4),
+                cpc=round(row.metrics.average_cpc / 1_000_000, 2),
+            )
+            for row in rows
+        ]
+
+    # ---------------------------------------------------------------
+    # Audience — Demografi (age & gender, dari 2 resource terpisah)
+    # ---------------------------------------------------------------
+    def get_audience_demographics(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> AudienceDemographics:
+        date_start, date_end = self._resolve_date_range(specific_date, all_time)
+        campaign_filter = f"AND campaign.id = {int(campaign_id)}" if campaign_id else ""
+
+        age_query = f"""
+            SELECT
+                ad_group_criterion.age_range.type,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.ctr,
+                metrics.average_cpc
+            FROM age_range_view
+            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}'
+                {campaign_filter}
+        """
+        gender_query = f"""
+            SELECT
+                ad_group_criterion.gender.type,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.ctr,
+                metrics.average_cpc
+            FROM gender_view
+            WHERE segments.date BETWEEN '{date_start}' AND '{date_end}'
+                {campaign_filter}
+        """
+
+        age_rows = self._execute_query(age_query)
+        gender_rows = self._execute_query(gender_query)
+
+        by_age = [
+            DemographicRow(
+                segment=row.ad_group_criterion.age_range.type_.name,
+                spend=round(row.metrics.cost_micros / 1_000_000, 2),
+                impressions=row.metrics.impressions,
+                clicks=row.metrics.clicks,
+                ctr=round(row.metrics.ctr, 4),
+                cpc=round(row.metrics.average_cpc / 1_000_000, 2),
+            )
+            for row in age_rows
+        ]
+        by_gender = [
+            DemographicRow(
+                segment=row.ad_group_criterion.gender.type_.name,
+                spend=round(row.metrics.cost_micros / 1_000_000, 2),
+                impressions=row.metrics.impressions,
+                clicks=row.metrics.clicks,
+                ctr=round(row.metrics.ctr, 4),
+                cpc=round(row.metrics.average_cpc / 1_000_000, 2),
+            )
+            for row in gender_rows
+        ]
+        return AudienceDemographics(platform=self.get_platform_name(), by_age=by_age, by_gender=by_gender)
+
+    # ---------------------------------------------------------------
+    # Audience — Interests
+    # ---------------------------------------------------------------
+    def get_targeted_interests(self, ad_group_id: str) -> List[TargetedInterest]:
+        query = f"""
+            SELECT
+                ad_group_criterion.criterion_id,
+                ad_group_criterion.user_interest.user_interest_category,
+                ad_group_criterion.status
+            FROM ad_group_criterion
+            WHERE ad_group.id = {int(ad_group_id)}
+                AND ad_group_criterion.type = 'USER_INTEREST'
+        """
+        rows = self._execute_query(query)
+        return [
+            TargetedInterest(
+                platform=self.get_platform_name(),
+                criterion_id=str(row.ad_group_criterion.criterion_id),
+                name=None,  # butuh query tambahan ke resource user_interest buat resolve nama aslinya
+                raw=row.ad_group_criterion.user_interest.user_interest_category,
+            )
             for row in rows
         ]
         

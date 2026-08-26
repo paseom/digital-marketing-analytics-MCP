@@ -9,7 +9,8 @@ from marketing_analytics.connectors import registry
 from marketing_analytics.models import (
     AccountInfo, Campaign, CampaignMetrics, MarketingReport,
     AdGroup, Ad, AdGroupMetrics, AdMetrics,
-    Keyword, KeywordMetrics, AssetGroup, Asset, AssetGroupMetrics
+    Keyword, KeywordMetrics, AssetGroup, Asset, AssetGroupMetrics,
+    DailyTrend, AudienceDemographics, TargetedInterest,
 )
 
 # Configure simple logging to stderr (stdio transport safe)
@@ -235,19 +236,48 @@ def fetch_keyword_metrics(keyword_id: str, ad_group_id: str, platform: str, star
         raise
 
 @mcp.tool()
-def fetch_daily_trends(platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None):
-    """Fetch daily trend metrics (spend, impressions, clicks, ctr, cpc) for a platform."""
-    return registry.get_connector(platform).get_daily_trends(specific_date, all_time, campaign_id)
+def fetch_daily_trends(platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[DailyTrend]:
+    """
+    Fetch daily trend metrics (spend, impressions, clicks, ctr, cpc) for a platform.
+    Pass specific_date for a single day, all_time=True for full history, or
+    leave both empty for the last 30 days.
+    """
+    try:
+        logger.info(f"Fetching daily trends (platform={platform}, specific_date={specific_date}, all_time={all_time}, campaign_id={campaign_id})")
+        return registry.fetch_daily_trends(platform=platform, specific_date=specific_date, all_time=all_time, campaign_id=campaign_id)
+    except Exception as e:
+        logger.error(f"Error fetching daily trends: {e}")
+        raise
 
 @mcp.tool()
-def fetch_audience_demographics(platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None):
-    """Fetch audience breakdown by age and gender. Meta Ads only."""
-    return registry.get_connector(platform).get_audience_demographics(specific_date, all_time, campaign_id)
+def fetch_audience_demographics(platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> AudienceDemographics:
+    """
+    Fetch audience breakdown by age and gender for a specific platform.
+    Returns two separate lists (by_age, by_gender) — age and gender are not
+    cross-tabbed, consistent across Meta Ads and Google Ads.
+    """
+    try:
+        logger.info(f"Fetching audience demographics (platform={platform}, specific_date={specific_date}, all_time={all_time}, campaign_id={campaign_id})")
+        return registry.fetch_audience_demographics(platform=platform, specific_date=specific_date, all_time=all_time, campaign_id=campaign_id)
+    except Exception as e:
+        logger.error(f"Error fetching audience demographics: {e}")
+        raise
 
 @mcp.tool()
-def fetch_targeted_interests(platform: str, adset_id: str):
-    """Fetch targeted interests for an ad set. Meta Ads only."""
-    return registry.get_connector(platform).get_targeted_interests(adset_id)
+def fetch_targeted_interests(platform: str, ad_group_or_adset_id: str) -> List[TargetedInterest]:
+    """
+    Fetch targeted interests for a given ad group / ad set.
+    - Meta Ads: pass the ad set ID.
+    - Google Ads: pass the ad group ID. Typically only populated for
+      Display/Video/Demand Gen campaigns — Search campaigns usually return
+      an empty list since they don't use interest targeting.
+    """
+    try:
+        logger.info(f"Fetching targeted interests (platform={platform}, id={ad_group_or_adset_id})")
+        return registry.fetch_targeted_interests(platform=platform, ad_group_or_adset_id=ad_group_or_adset_id)
+    except Exception as e:
+        logger.error(f"Error fetching targeted interests: {e}")
+        raise
 
 @mcp.tool()
 def generate_report(platforms: Optional[List[str]] = None, start_date: str = "2026-07-01", end_date: str = "2026-07-10") -> MarketingReport:

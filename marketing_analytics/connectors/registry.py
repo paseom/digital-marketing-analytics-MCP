@@ -79,6 +79,18 @@ class ConnectorRegistry:
     def fetch_keyword_metrics(self, keyword_id: str, ad_group_id: str, platform: str, start_date: str = None, end_date: str = None):
         return self.get_connector(platform).fetch_keyword_metrics(keyword_id, ad_group_id, start_date, end_date)
 
+    def fetch_daily_trends(self, platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None):
+        """Fetch daily trend metrics (spend, impressions, clicks, ctr, cpc) for a specific platform."""
+        return self.get_connector(platform).get_daily_trends(specific_date, all_time, campaign_id)
+
+    def fetch_audience_demographics(self, platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None):
+        """Fetch audience breakdown by age and gender for a specific platform."""
+        return self.get_connector(platform).get_audience_demographics(specific_date, all_time, campaign_id)
+
+    def fetch_targeted_interests(self, platform: str, ad_group_or_adset_id: str):
+        """Fetch targeted interests for an ad group / ad set on a specific platform."""
+        return self.get_connector(platform).get_targeted_interests(ad_group_or_adset_id)
+    
     def generate_report(self, platforms: List[str], start_date: str, end_date: str) -> MarketingReport:
         """Generate an aggregated MarketingReport across selected platforms."""
         if not platforms:

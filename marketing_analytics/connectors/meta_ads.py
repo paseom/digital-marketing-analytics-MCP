@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 import requests
 
 from marketing_analytics.connectors.base import BaseMarketingConnector
-from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, PlatformReport
+from marketing_analytics.models import AccountInfo, Campaign, CampaignMetrics, PlatformReport, DailyTrend, DemographicRow, AudienceDemographics, TargetedInterest
 
 try:
     from dotenv import load_dotenv
@@ -235,14 +235,14 @@ class MetaAdsConnector(BaseMarketingConnector):
         date_start, date_end = value
         return {"time_range": json.dumps({"since": date_start, "until": date_end})}
 
-    # ---------------------------------------------------------------
+        # ---------------------------------------------------------------
     # Daily Trends
     # ---------------------------------------------------------------
-    def get_daily_trends(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[Dict[str, Any]]:
+    def get_daily_trends(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[DailyTrend]:
         params = {
             **self._build_time_params(specific_date, all_time),
             "time_increment": 1,
-            "fields": "date_start,spend,impressions,clicks,ctr,cpc,cpm",
+            "fields": "date_start,spend,impressions,clicks,ctr,cpc",
             "level": "campaign" if campaign_id else "account",
         }
         if campaign_id:
@@ -250,37 +250,84 @@ class MetaAdsConnector(BaseMarketingConnector):
                 {"field": "campaign.id", "operator": "EQUAL", "value": campaign_id}
             ])
         data = self._get(f"{self.ad_account_id}/insights", params)
-        return data.get("data", [])
+        return [
+            DailyTrend(
+                platform=self.get_platform_name(),
+                date=row.get("date_start", ""),
+                spend=round(float(row.get("spend", 0)), 2),
+                impressions=int(row.get("impressions", 0)),
+                clicks=int(row.get("clicks", 0)),
+                ctr=round(float(row.get("ctr", 0)), 4),
+                cpc=round(float(row.get("cpc", 0)), 2),
+            )
+            for row in data.get("data", [])
+        ]
 
     # ---------------------------------------------------------------
-    # Audience — Demografi (age, gender)
+    # Audience — Demografi (age & gender, 2 query terpisah biar konsisten sama Google)
     # ---------------------------------------------------------------
-    def get_audience_demographics(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> List[Dict[str, Any]]:
-        params = {
+    def get_audience_demographics(self, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> AudienceDemographics:
+        base_params = {
             **self._build_time_params(specific_date, all_time),
             "fields": "spend,impressions,clicks,ctr,cpc",
-            "breakdowns": "age,gender",
             "level": "campaign" if campaign_id else "account",
         }
         if campaign_id:
-            params["filtering"] = json.dumps([
+            base_params["filtering"] = json.dumps([
                 {"field": "campaign.id", "operator": "EQUAL", "value": campaign_id}
             ])
-        data = self._get(f"{self.ad_account_id}/insights", params)
-        return data.get("data", [])
+
+        age_params = {**base_params, "breakdowns": "age"}
+        gender_params = {**base_params, "breakdowns": "gender"}
+
+        age_data = self._get(f"{self.ad_account_id}/insights", age_params)
+        gender_data = self._get(f"{self.ad_account_id}/insights", gender_params)
+
+        by_age = [
+            DemographicRow(
+                segment=row.get("age", "UNKNOWN"),
+                spend=round(float(row.get("spend", 0)), 2),
+                impressions=int(row.get("impressions", 0)),
+                clicks=int(row.get("clicks", 0)),
+                ctr=round(float(row.get("ctr", 0)), 4),
+                cpc=round(float(row.get("cpc", 0)), 2),
+            )
+            for row in age_data.get("data", [])
+        ]
+        by_gender = [
+            DemographicRow(
+                segment=row.get("gender", "UNKNOWN").upper(),
+                spend=round(float(row.get("spend", 0)), 2),
+                impressions=int(row.get("impressions", 0)),
+                clicks=int(row.get("clicks", 0)),
+                ctr=round(float(row.get("ctr", 0)), 4),
+                cpc=round(float(row.get("cpc", 0)), 2),
+            )
+            for row in gender_data.get("data", [])
+        ]
+        # note: "gaji"/income TIDAK tersedia sebagai breakdown — Meta gak expose ini
+        return AudienceDemographics(platform=self.get_platform_name(), by_age=by_age, by_gender=by_gender)
 
     # ---------------------------------------------------------------
-    # Audience — Interest 
+    # Audience — Interest
     # ---------------------------------------------------------------
-    def get_targeted_interests(self, adset_id: str) -> List[Dict[str, Any]]:
-        """
-        Interest bukan dimensi hasil (siapa yang klik), tapi siapa yang DITARGET.
-        Jadi diambil dari targeting spec ad set, dipisah dari metrics performance.
-        """
+    def get_targeted_interests(self, adset_id: str) -> List[TargetedInterest]:
         data = self._get(adset_id, {"fields": "targeting"})
         targeting = data.get("targeting", {})
-        interests = targeting.get("flexible_spec", []) or [targeting.get("interests", [])]
-        return interests
+        raw_interests = targeting.get("flexible_spec") or [{"interests": targeting.get("interests", [])}]
+
+        results = []
+        for group in raw_interests:
+            for interest in group.get("interests", []):
+                results.append(
+                    TargetedInterest(
+                        platform=self.get_platform_name(),
+                        criterion_id=str(interest.get("id")) if interest.get("id") else None,
+                        name=interest.get("name"),
+                        raw=None,
+                    )
+                )
+        return results
     
     # ---------------------------------------------------------------
     # Static metadata
