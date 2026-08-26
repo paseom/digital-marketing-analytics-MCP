@@ -653,24 +653,19 @@ class GoogleAdsConnector(BaseMarketingConnector):
         campaign_filter = f"AND campaign.id = {int(campaign_id)}" if campaign_id else ""
 
         age_query = f"""
-            SELECT
-                ad_group_criterion.age_range.type,
+            SELECT ad_group_criterion.age_range.type,
                 metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.ctr, metrics.average_cpc
             FROM age_range_view
             WHERE segments.date BETWEEN '{date_start}' AND '{date_end}' {campaign_filter}
         """
         gender_query = f"""
-            SELECT
-                ad_group_criterion.gender.type,
+            SELECT ad_group_criterion.gender.type,
                 metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.ctr, metrics.average_cpc
             FROM gender_view
             WHERE segments.date BETWEEN '{date_start}' AND '{date_end}' {campaign_filter}
         """
-        # Household income bracket — HANYA populated untuk Display Network,
-        # campaign Search biasanya balikin kosong/UNKNOWN
         income_query = f"""
-            SELECT
-                ad_group_criterion.income_range.type,
+            SELECT ad_group_criterion.income_range.type,
                 metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.ctr, metrics.average_cpc
             FROM income_range_view
             WHERE segments.date BETWEEN '{date_start}' AND '{date_end}' {campaign_filter}
@@ -680,19 +675,37 @@ class GoogleAdsConnector(BaseMarketingConnector):
         gender_rows = self._execute_query(gender_query)
         income_rows = self._execute_query(income_query)
 
-        def _to_row(row, segment_value):
-            return DemographicRow(
-                segment=segment_value,
-                spend=round(row.metrics.cost_micros / 1_000_000, 2),
-                impressions=row.metrics.impressions,
-                clicks=row.metrics.clicks,
-                ctr=round(row.metrics.ctr, 4),
-                cpc=round(row.metrics.average_cpc / 1_000_000, 2),
-            )
+        def _aggregate_by_segment(rows, get_segment):
+            """Gabungkan baris-baris dengan segment sama (misal beberapa ad group
+            yang sama-sama punya baris 'AGE_RANGE_25_34') jadi satu total per segment."""
+            agg: Dict[str, Dict[str, float]] = {}
+            for row in rows:
+                seg = get_segment(row)
+                bucket = agg.setdefault(seg, {"cost_micros": 0, "impressions": 0, "clicks": 0})
+                bucket["cost_micros"] += row.metrics.cost_micros
+                bucket["impressions"] += row.metrics.impressions
+                bucket["clicks"] += row.metrics.clicks
 
-        by_age = [_to_row(r, r.ad_group_criterion.age_range.type_.name) for r in age_rows]
-        by_gender = [_to_row(r, r.ad_group_criterion.gender.type_.name) for r in gender_rows]
-        by_income = [_to_row(r, r.ad_group_criterion.income_range.type_.name) for r in income_rows]
+            result = []
+            for seg, vals in agg.items():
+                impressions = vals["impressions"]
+                clicks = vals["clicks"]
+                spend = vals["cost_micros"] / 1_000_000
+                ctr = (clicks / impressions) if impressions else 0.0
+                cpc = (spend / clicks) if clicks else 0.0
+                result.append(DemographicRow(
+                    segment=seg,
+                    spend=round(spend, 2),
+                    impressions=impressions,
+                    clicks=clicks,
+                    ctr=round(ctr, 4),
+                    cpc=round(cpc, 2),
+                ))
+            return result
+
+        by_age = _aggregate_by_segment(age_rows, lambda r: r.ad_group_criterion.age_range.type_.name)
+        by_gender = _aggregate_by_segment(gender_rows, lambda r: r.ad_group_criterion.gender.type_.name)
+        by_income = _aggregate_by_segment(income_rows, lambda r: r.ad_group_criterion.income_range.type_.name)
 
         return AudienceDemographics(
             platform=self.get_platform_name(),
