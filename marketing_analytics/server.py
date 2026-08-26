@@ -252,9 +252,13 @@ def fetch_daily_trends(platform: str, specific_date: str = None, all_time: bool 
 @mcp.tool()
 def fetch_audience_demographics(platform: str, specific_date: str = None, all_time: bool = False, campaign_id: str = None) -> AudienceDemographics:
     """
-    Fetch audience breakdown by age and gender for a specific platform.
-    Returns two separate lists (by_age, by_gender) — age and gender are not
-    cross-tabbed, consistent across Meta Ads and Google Ads.
+    Fetch audience breakdown by age, gender, and (Google Ads only) household income range.
+    Returns three separate lists (by_age, by_gender, by_income) — dimensions are not
+    cross-tabbed.
+    - by_age, by_gender: available on both Meta Ads and Google Ads.
+    - by_income: Google Ads only, and only populated for Display Network campaigns.
+      Always empty for Search campaigns and always empty for Meta Ads (Meta does not
+      expose income data via its API).
     """
     try:
         logger.info(f"Fetching audience demographics (platform={platform}, specific_date={specific_date}, all_time={all_time}, campaign_id={campaign_id})")
