@@ -186,3 +186,4 @@ class TargetedInterest(BaseModel):
     criterion_id: Optional[str] = Field(None, description="ID of the targeting criterion, if available")
     name: Optional[str] = Field(None, description="Human-readable interest name/category, if resolved")
     raw: Optional[str] = Field(None, description="Raw identifier/category string as returned by the platform API, for cases where a human-readable name isn't resolved")
+    
